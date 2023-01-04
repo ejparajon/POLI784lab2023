@@ -1,0 +1,13 @@
+% Encoding: UTF-8
+
+@Article{lmb2004,
+  author  = {David S. Lee and Enrico Moretti and Matthew J. Butler},
+  title   = {Do Voters affect or elect Policies? Evidence from the U.S. House},
+  journal = {Quarterly Journal of Economics},
+  year    = {2004},
+  volume  = {119},
+  number  = {3},
+  pages   = {807-859},
+}
+
+@Comment{jabref-meta: databaseType:bibtex;}
