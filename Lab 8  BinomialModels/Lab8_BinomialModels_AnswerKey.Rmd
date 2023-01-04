@@ -1,0 +1,463 @@
+---
+title: 'Lab 8: Binomiaal Models in R'
+author: "TA: Eric Parajon"
+output: pdf_document
+---
+
+Today's lab has been adapted from code by Chelsea Estancona, Isabel Laterzo, and Simon Hoellerbauer.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+rm(list=ls()) # clear workspace
+#setwd("____") # change to wherever you saved the data
+set.seed(18765) # set seed for replication
+
+#Load in packages
+pacman::p_load(tidyverse,
+               rio,
+               arm)#for importing data
+```
+
+
+# Binomial Models
+
+Today we'll work through a fairly standard problem: you have a dichotomous dependent variable and a set of independent variables, and you want to estimate a model. Let's walk through a full example.
+
+Load the `Lab_8_data.dta` file. These are data from a previous project (Chelsea Estancona ('18)'s) about paramilitary groups in Colombia. Our DV is a dichotomous variable coding paramilitary presence in certain municipalities.
+
+
+```{r}
+colombia <- rio::import("Lab_8_data.dta")
+```
+
+Let's plot our DV. This is always a good practice for *all* variables (independent or dependent) in your work. 
+
+```{r}
+ggplot(colombia, aes(x = as.factor(AUC))) +
+  geom_bar() +
+  labs(x = 'AUC Presence') +
+  theme_bw()
+```
+
+Note that plotting in this way can also give us information about missingness (which there's a lot of on this variable). Remember - what does R do with our missing data if we leave it to handle it on its own?
+
+Now we're ready to put together a simple model. 
+
+```{r}
+m1 <- glm(AUC ~ tribut_2_log + tribut_2_log_sq + pop_attacks + disbogota +
+            drugs + pop_log, data=colombia, family = binomial(link = 'logit'))
+
+summary(m1)
+```
+
+
+If we wanted to use a probit link: 
+
+
+```{r}
+m2 <- glm(AUC ~ ., data = colombia, family = binomial(link = 'probit'))
+#what is the . doing above?
+summary(m2)
+```
+
+The sign (and generally, significance) of our coefficient estimates remain the same. The values differ due to these link functions. 
+
+This is all very well and good, but how useful are the coefficient estimates? How do we interpret them? 
+
+We might want to use our model to estimate predicted probabilities, as this is a readily-understood measure of how changes in our independent variable affect the probability of observing a certain outcome. 
+
+In doing so, we'll want to think about a 'hypothetical case' for which we want to predict: for example, here, we'll calculate the predicted probability of the United Self-Defenses of Colombia or Autodefensas Unidas de Colombia (AUC) presence in a municipality with the mean tax income, mean attacks on population, mean distance from the capitol, drug crops, and the average population.
+
+*Note*: This is the so-called average case approach.
+
+```{r}
+## calculate value of the linear predictor for this variable profile
+linpred <- as.numeric(with(colombia, coef(m1)[1] +
+                             coef(m1)[2] * mean(tribut_2_log, na.rm = T) +
+                             coef(m1)[3] * mean(tribut_2_log, na.rm = T)^2 +
+                             coef(m1)[4] * mean(pop_attacks, na.rm = T) +
+                             coef(m1)[5] * mean(disbogota, na.rm = T) +
+                             coef(m1)[6] * (1) + #could set this to its mode
+                             coef(m1)[7] * mean(pop_log, na.rm = T)))
+
+#let's take a look!
+arm::invlogit #no parentheses from the arm package
+
+## invlogit lets us transform our log-odds to the range (0,1) - now interpretable
+## as a standard probability
+invlogit(linpred)
+```
+We can also do this using the 'predict' function: 
+
+```{r}
+## create a 'new data' frame: we want to predict the probability for a hypothetical situation.
+new_data <- with(colombia, data.frame(tribut_2_log = mean(tribut_2_log, na.rm = T),
+                                      tribut_2_log_sq = mean(tribut_2_log, na.rm = T)^2,
+                                      pop_attacks = mean(pop_attacks, na.rm = T),
+                                      disbogota = mean(disbogota, na.rm = T),
+                                      drugs = c(0, 1),
+                                      pop_log = mean(pop_log, na.rm = T)))
+## note above that I include both possible values for drugs. the 'data.frame()'
+## command is flexible and will intelligently duplicate the other values
+
+predict(m1, newdata = new_data, type = 'response')
+```
+
+What if we were interested in a *range* of values' predicted probability? We could modify our newdata frame and our predict() function to allow for this. 
+
+```{r}
+min_tax <- min(colombia$tribut_2_log, na.rm = T)
+max_tax <- max(colombia$tribut_2_log, na.rm = T)
+min_tax_2 <- min(colombia$tribut_2_log_sq, na.rm = T)
+max_tax_2 <- max(colombia$tribut_2_log_sq, na.rm = T)
+
+new_data_2 <- with(colombia,
+                 data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
+                                               length.out = 100),
+                            tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
+                                                  length.out = 100),
+                            pop_attacks = mean(pop_attacks, na.rm = T),
+                            disbogota = mean(disbogota, na.rm = T),
+                            drugs = 1, pop_log = mean(pop_log, na.rm = T)))
+
+new_data_3 <- with(colombia,
+                 data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
+                                               length.out = 100),
+                            tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
+                                                  length.out = 100),
+                            pop_attacks = mean(pop_attacks, na.rm = T),
+                            disbogota = mean(disbogota, na.rm = T),
+                            drugs = 0, pop_log = mean(pop_log, na.rm = T)))
+
+
+predict(m1, newdata = new_data_2, type = 'response') # what is the length of this output?
+predict(m2, newdata = new_data_3, type = 'response')
+
+#we can calculate the logit predicted probs by hand by doing 1/(1 + exp(-linpred))
+#How could we calculate this for probit?
+
+#We can use pnorm! (this is, after all, the difference between the logit and probit)
+all(predict(m2, newdata = new_data_3, type = "response") ==
+      pnorm(as.matrix(cbind(1, new_data_3)) %*% coef(m2)))
+```
+
+Note that in this case, it is perfectly ok to vary the tax variable and the the squared tax value from its min to its max, as the square roots of the minimum and maximum squared are equal to the minimum and maximum (unless for some reason you have missingness in one variable at the max and min, which should be unlikely).
+
+We know from the numeric output that logit and probit links produce different coefficient estimates, but how do these differences translate into predicted probabilities? We can plot the predicted probabilities from each model to quickly inspect these differences.
+
+```{r}
+## generate predicted probabilities for municipality with drugs and all other
+## variables at their means
+pred_output <- data.frame(Logit = predict(m1, newdata = new_data_2, type = 'response'),
+                          Probit = predict(m2, newdata = new_data_2, type = 'response'),
+                          tax = new_data_2$tribut_2_log)
+
+plot_pred1 <- gather(pred_output, key = "link", value = "Pred_Probs", -tax)
+
+## plot predicted probabilities
+ggplot(data = plot_pred1, aes(x = tax, y = Pred_Probs, color = link)) +
+  geom_line() +
+  scale_color_discrete(name = 'Link Function') +
+  labs(x = 'Tax Revenue', y = 'Predicted Probability') +
+  theme_bw()
+```
+
+# Simulation
+
+We talked about simulations in Lab 4, when we talked about OLS. This time around, we will do similar things, but with non-Normal outcomes, where simulations are even more helpful! 
+
+Today, we're going to simulate predicted probabilities for a model with an interaction term, use the distribution of these simulated probabilities to define confidence intervals, and plot our results, using both the average case and the observed-case approaches.
+
+## Using Average-Case Approach
+
+The following should all look familiar:
+```{r}
+## number of simulations for predicted probabilities
+N_sim <- 1000
+
+## extract beta hats and construct vcv from our first model
+betas <- m1$coef
+vcv <- vcov(m1)
+
+## use the mvrnorm function with the betas, vcv, and # of simulations to simulate
+## parameter estimates. will have 1,000 estimates of each beta
+beta_sims <- mvrnorm(N_sim, betas, vcv)
+
+## create a vector that is a sequence of 100 points, evenly spaced between the
+## lowest and highest observed values of tax income in the data set. we have to
+## do this for the (tax^2) variable, too!
+tax_min <- with(colombia, min(tribut_2_log, na.rm = T))
+tax_max <- with(colombia, max(tribut_2_log, na.rm = T))
+tax_vec <- seq(from = tax_min, to = tax_max, length = 100)
+trans_vec <- (tax_vec^2)
+## these will be the x values over which we can plot the predicted probability.
+## we're interested in how the predicted probability of AUC presence varies over
+## the municipalities' values of tax revenue
+
+## create a hypothetical independent variable as before: mean attacks on population,
+## mean distance from the capitol, drug crops set to 1, and the average population.
+hyp <- with(colombia, data.frame(intercept = 1, 
+                                 tribut_2_log = tax_vec,
+                                 tribut_2_log_sq = trans_vec,
+                                 pop_attacks = mean(pop_attacks, na.rm = T),
+                                 disbogota = mean(disbogota, na.rm = T),
+                                 drugs = 1,
+                                 pop_log = mean(pop_log, na.rm = T)))
+
+#We could also have done this using model.matrix()
+
+## create an empty matrix of values to fill with simulated predicted probabilities
+pp_sims <- matrix(NA, nrow = N_sim, ncol = length(tax_vec))
+#Using a for() loop to fill wth simulated pred. probs
+for(i in 1:N_sim) {
+  
+  pp_sims[i, ] <- invlogit(as.matrix(hyp) %*% beta_sims[i, ])
+  
+}
+
+#we could also do this with less code:
+pp_sims2 <- invlogit(as.matrix(hyp) %*% t(beta_sims))
+
+dim(pp_sims)
+dim(pp_sims2)
+
+all(t(pp_sims) == pp_sims2)
+
+```
+
+We're not going to worry about confidence intervals today, but below is the code for them as well. 
+
+```{r}
+## CIs
+pe <- apply(pp_sims, 2, mean)
+lo <- apply(pp_sims, 2, quantile, prob = .025)
+hi <- apply(pp_sims, 2, quantile, prob = .975)
+
+sim_output <- data.frame(tax = hyp[, 2], pe, lo, hi)
+
+ggplot(sim_output, aes(x = tax, y = pe, ymin = lo, ymax = hi)) +
+  geom_ribbon(aes(fill = '95% Confidence Interval (Simulation)'), alpha = .5) +
+  geom_line(aes(color = 'Predicted Probability Over Values of Municipal Revenue'),
+            size = 1) +
+  labs(x = 'Revenue', y = 'Probability of Paramilitary Presence') +
+  theme_bw() +
+  theme(legend.title = element_text(), legend.position = 'bottom',
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()) +
+  scale_fill_manual(values = 'steelblue3', name = '') +
+  scale_color_manual(values = 'black', name = '')
+```
+
+## Using Observed-Case Approach - Average Predicted Effects
+
+The code above created a hypothetical set of cases in which we might be interested, but what if we wanted more of an average effect? To this end, we can code and plot an 'average predictive effect' that covers the values of our key variable (we still generate predicted probabilities 'along' these values) and all possible values of the other variables in our dataset.
+
+```{r, cache = TRUE}
+## create a 'temporary' dataset - bind a 1 for the intercept and omit missingness
+temporary <- model.matrix( ~ tribut_2_log + tribut_2_log_sq + pop_attacks + 
+                             disbogota + drugs + pop_log, data = colombia)
+
+## create an object and store predicted probabilities
+## look into the ?map_dfc function from the purrr package (part of the tidyverse)
+
+#note this will take a few minutes
+pp <- purrr::map_dfc(tax_vec, function(j) {
+    temporary[, "tribut_2_log"] <- j
+    temporary[, "tribut_2_log_sq"] <- j^2
+    
+    pp <- invlogit(temporary %*% t(beta_sims))
+    
+    #getting mean for each set of betas
+    pp <- apply(pp, 2, mean)
+  
+    return(pp)
+    })
+
+
+## find the mean (average predictive effect) for each observation, and bind with
+## confidence measures (interval) 
+plotdat <- t(apply(pp, 2, function(x) { # transposing w/ t() puts data into a column
+    c(M = mean(x), quantile(x, c(0.025, 0.975)))
+}))
+
+# add x vector and convert to data frame
+plotdat <- data.frame(tax_vec, plotdat)
+
+# better names and show the first few rows (to check)
+colnames(plotdat) <- c('tax', 'pe', 'lo', 'hi')
+head(plotdat)
+
+#now let's rowbind in the average-case predicted probabilities, so that we can 
+#compare them
+plotdat <- rbind(plotdat, sim_output) %>% 
+  mutate(Approach = c(rep("Observed-Case",length(tax_vec)),
+                      rep("Average-Case", length(tax_vec))))
+
+## plot of predicted probabilities
+ggplot(plotdat, aes(x = tax, y = pe, ymin = lo, ymax = hi, color = Approach,
+                    fill = Approach)) +
+  geom_ribbon(alpha = .25) +
+  geom_line() +
+  labs(x = 'Tax Revenue', y = 'Predicted Probability') +
+  ylim(c(0, 1)) +
+  theme_bw()
+```
+
+# Assignment
+
+Read in the data 'turnout.csv.' Fit a logit model that predicts voting based on race, education and income. 
+
+Now, fit a second model that predicts voting based on race, education, income, and age. Assume that you've hypothesized that age has a curvilinear relationship with voting turnout, such that lower ages and higher ages are less likely to vote. Include this transformed variable.
+
+Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
+
+Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
+
+Generate an average predicted effect over the observed values of income for the first model. Plot this.
+
+Required packages and data:
+```{r, message=FALSE}
+#Load in packages
+pacman::p_load(lmtest)
+
+turnout<-import("turnout.csv")
+
+
+```
+
+
+First, we fit the models:
+```{r}
+m1 <- glm(vote ~ race + educate + income, turnout, family = binomial(link = 'logit'))
+m2 <- glm(vote ~ race + educate + income + poly(age, 2, raw = T), turnout, 
+          family = binomial(link = 'logit'))
+
+lrtest(m1, m2)
+AIC(m1)
+AIC(m2)
+BIC(m1)
+BIC(m2)
+```
+
+# Average-Case Approach
+
+When we combine the average-case approach with simulation, we create a hypothetical design matrix, where we hold all continuous variables at their mean or another justifiable value, and then let the predictor of interest vary along some range. 
+
+
+```{r}
+sim_dat <- with(turnout, data.frame(intercept = 1, race = 1,
+                                    educate = mean(educate), income = mean(income),
+                                    age = seq(min(age), max(age), length.out = 100),
+                                    age2 = (seq(min(age), max(age), length.out = 100))^2))
+```
+
+In order to simulate different betas, we take a predetermined number of draws (1000 in this case here) from a multi-variate normal distribution centered around the coefficient estimates from our model, with a variance-covariance matrix also from our model. We then matrix multiply our hypothetical design matrix with our simulated betas. This means that we will have 1000 different predicted probabilities for each row in our hypothetical design matrix (in other words, we have 1000 different predicted probabilities for each element of the vector of values for our predictor of interest). We then have to make sure that we take the mean, and the quantiles we are interested in, along whichever dimension represents the elements of the hypothetical range vector. We can do this using `apply`. Note that in the example below, we are using `apply` along the rows of `sim_pp` because of how we constructed `sim_pp` (also using `apply`.) If we had not used `apply` and had instead simply done `as.matrix(sim_dat) %*% sim_betas`, the dimensions of `sim_pp` would have been reversed, and we would have to `apply` the mean and quantile functions along the columns, not the rows. 
+```{r}
+sim_betas <- mvrnorm(1e3, coef(m2), vcov(m2))
+
+sim_pp <- apply(sim_betas, 1, function(x) invlogit(as.matrix(sim_dat) %*% x))
+
+sim_gg <- data.frame(age = sim_dat$age, pe = apply(sim_pp, 1, mean),
+                     lo = apply(sim_pp, 1, quantile, probs = .025),
+                     hi = apply(sim_pp, 1, quantile, probs = .975))
+```
+
+We can plot the predicted probabilities and our confidence bands.
+```{r}
+ggplot(sim_gg, aes(x = age, y = pe, ymin = lo, ymax = hi)) +
+  geom_ribbon(aes(fill = '95% Confidence Interval'), alpha = .5) +
+  geom_line(aes(color = 'Predicted Probability')) +
+  labs(x = 'Age', y = 'Probability of Turnout') +
+  theme_bw() +
+  theme(legend.title = element_text(), legend.position = 'bottom',
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()) +
+  scale_fill_manual('', values = 'dodgerblue4') +
+  scale_color_manual('', values = 'grey30')
+```
+
+# Observed-Case Approach
+
+When taking the observed-case approach (see Hanmer and Kalkan (2013) for why this is the preferable approach) and using simulation to get confidence intervals, we have to do things slightly differently. Specifically, we will have to take an addition mean. This is because whereas in the average-case approach, we had one row for each hypothetical value of our predictor of interest (however long we decided to make it), in the observed-case approach, we will have a whole matrix or dataframe for each hypothetical value of our predictor of interest.
+
+We start by creating a temporary design matrix. This while start out as being the same exact design matrix used to fit the model, which is why we can just use `model.matrix()` on our model object.
+
+```{r}
+temporary <- model.matrix(m1)
+```
+
+We then have to make sure to once again simulate our betas, using our model object.
+```{r}
+#getting sim betas for m1
+sim_betas_m1 <- mvrnorm(1e3, coef(m1), vcov(m1))
+```
+
+Just like with the average-case approach, we have to create the values we want our predictor of interest (*income* in this case) to take on. Just like in the average-case approach, these are really hypothetical values. Here, we will let income vary from its min to its max.
+```{r}
+#getting range of income
+income_vec <- seq(from = min(turnout$income), to = max(turnout$income),
+                  length.out = 100)
+```
+
+In the next step, we do several important things at once. We will do these things using the `map_dfc` function from `purrr` (part of the tidyverse). This works a lot like the `apply` family of functions, but is somewhat faster. It maps a function to a vector and then, because of the `_dfc` suffix, column binds the results of the function together. In other words, we apply the function to each element in the vector, and then (because the function returns a vector) we get a dataframe in as output. Note that we could do something similar with `lapply`, but then we would get a list of vectors.
+
+```{r}
+pp <- map_dfc(income_vec, function(j) {
+    temporary[, "income"] <- j
+    
+    pp <- invlogit(temporary %*% t(sim_betas_m1))
+    
+    pp <- apply(pp, 2, mean)
+  
+    return(pp)
+    })
+```
+
+
+The function we apply to each element of our hypothetical predictor value vector does a few things:
+1. It takes the temporary design matrix we created above, and then replaces *all* of the values of our predictor of interest with one value (taken from the hypothetical value vector).
+This looks like the following:
+```{r}
+head(income_vec)
+
+temporary[, "income"] <- income_vec[1]
+
+head(temporary)
+```
+2. We then matrix multiply this new design matrix, with all actual values of our predictor of interest replaced by one hypothetical value of our predictor interest and with all the other values held at their observed values, by our simulated betas. This creates a matrix, which has as many rows as the rows of our data, and as many columns as there are samples of our betas.  
+```{r}
+dim(invlogit(temporary %*% t(sim_betas_m1)))
+```
+3. We then take the mean across the columns (`margins = 2`) because different columns represent different predicted probabilities, for each of the observations in our temporary design matrix, when we use different betas and when our predictor of interest has been replaced with one value. This means that we then have a mean predicted probability for each different set of betas when our predictor of interest is at a certain value.
+
+The call to `map_dfc` then returns a dataframe that has 1000 rows and 100 columns (1 column for each value of our hypothetical value vector). Because we are interested in how the predicted probability changes according to the hypothetical values of our predictor of interest and because we currently have 1000 predicted probabilities for each of these hypothetical values (1 for each of our simulated betas), we once again use `apply` with `margins = 2`. We get the mean of predicted values for each value of our hypothetical value vector, and then use the `quantile` with a `probs` argument equal to the bounds of our desired confidence interval (for example, if we want a 95% confidence interval, we will do `quantile(x, probs = c(0.025, 0.975))`).  
+
+```{r}
+
+
+plotdat <- t(apply(pp, 2, function(x) { # transposing w/ t() puts data into a column
+    c(M = mean(x), quantile(x, c(0.025, 0.975)))
+}))
+
+plotdat <- data.frame(plotdat, income_vec)
+```
+
+We can then use these data to plot the mean predicted probability and our confidence bands.
+```{r}
+colnames(plotdat) <- c('pe', 'lo', 'hi', 'income')
+head(plotdat)
+
+ggplot(plotdat, aes(x = income, y = pe, ymin = lo, ymax = hi)) +
+  geom_ribbon(aes(fill = '95% Confidence Interval (Simulation)'),
+              alpha = .5) +
+  geom_line(col = 'maroon') +
+  labs(x = 'Income', y = 'Predicted Probability of Voting') +
+  ylim(c(0, 1)) +
+  scale_fill_manual('', values = 'darkorange') +
+  theme_bw() +
+  theme(legend.title = element_text(), legend.position = 'bottom',
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+

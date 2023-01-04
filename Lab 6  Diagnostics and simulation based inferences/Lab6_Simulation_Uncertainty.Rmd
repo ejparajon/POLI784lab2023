@@ -1,0 +1,471 @@
+---
+title: "Lab 6 - Diagnostics and simulation based inferences "
+author: "Eric Parajon"
+output: pdf_document
+---
+
+This lab has been adapted from code by Simon Hoellerbauer and Isabel Laterzo. 
+
+So far in lab, we have often simulated data to allow us to test out various methods. Simulation can help us do much more, as well. Simulations are a useful tool that is being used more and more often within the discipline. They can help us:
+1) Construct a hypothetical DGP and then see if the methods we use/develop can successfully retrieve the parameters of that DGP
+2) Make our data go further with re-sampling 
+3) Create plots to help us assess our results when our variance/covariance matrix gets complex (when distributional assumptions can be tricky)
+
+Today, we will use simulation to help us assess the uncertainty around our parameter estimates and will then incorporate this uncertainty into the predicted values of our outcome variable.
+
+
+We will be examining **Regression Diagnostics**, or ways to examine if our regression meets necessary assumptions, and if anything weird (e.g., outliers, etc.) is going on. Remember the four key assumptions of a linear regression:
+
+1) Linearity of the data - the relationship between x and y is linear
+
+2) Normality of residuals - the residual errors are normally distributed
+
+3) Homogeneity of residual variance - the residuals have CONSTANT variance (homoscedasticity)
+
+4) Independence of residual error terms
+
+The following tests will help us see if these assumptions hold, and will examine a number of possible issues. These include (but are not limited to) non-linearity of the data, heteroscedasticity (non-constant variance in the errors), and presence of influential values (outliers and high-leverage points).
+
+# Simulation
+```{r, message = FALSE}
+#clear global environ
+rm(list=ls())
+
+#the packages we will need
+
+#Installing and loading packages for use
+pacman::p_load(MASS,#required for multivariate normal
+               tidyverse,
+               AER) #For guns data
+
+```
+
+Download the "aid_data_95_ee.csv" in the Labs folder on Sakai and then read it into R:
+```{r, warning = F, message = F}
+#remember to set your working directory!
+setwd("______")
+
+#read_csv comes from readr from the tidyverse suite of packages
+aid_data_95_ee <- read_csv("aid_data_95_ee.csv")
+#also look into fread()
+```
+
+Let's take a look at this data very quickly:
+```{r, warning = F, message = F, include = F}
+#checking dimensions
+dim(aid_data_95_ee)
+#that's a lot of variables!
+
+#which variables?
+names(aid_data_95_ee)
+
+#which countries?
+unique(aid_data_95_ee$recipient)
+
+#for which years?
+unique(aid_data_95_ee$year)
+
+#how many countries in years? dplyr can help us here
+aid_data_95_ee %>% group_by(recipient) %>% tally
+```
+
+We are going to see how civil society strength in Eastern Europe varies according to lagged civil society assistance, EU accession leverage, and lagged GDP per capita.
+
+Let's look at the distribution of the outcome variable (with some simple, barebones graphs):
+```{r, warning = FALSE}
+#distribution of civil society strength
+ggplot(data = aid_data_95_ee, aes(x = civ_soc_strength)) + 
+  geom_density()
+#Is it necessarily a problem that our outcome variable is skewed?
+
+#what does our main predictor of interest look like?
+ggplot(data = aid_data_95_ee, aes(x = civ_soc_aid_l1_log)) + 
+  geom_density()
+#why do you think we log civil society aid?
+
+#let's look at relationship between the two
+ggplot(data = aid_data_95_ee, aes(x = civ_soc_aid_l1_log, y = civ_soc_strength)) +
+  geom_point()
+
+#what about EU accession?
+ggplot(data = aid_data_95_ee, aes(x = EU_accession)) + geom_bar()
+```
+
+Let's fit our model:
+```{r, message = F, warning = F, results = "hide"}
+#first we have to make sure that EU_accession is a factor, and that the 
+#reference category makes sense for us
+aid_data_95_ee$EU_accession <- factor(aid_data_95_ee$EU_accession) %>%
+  relevel(ref = "no leverage")
+levels(aid_data_95_ee$EU_accession) #First one will be the reference catagory
+
+#Estimating the model
+cs_model <- lm(civ_soc_strength ~ GDPpc_ppp_WB_2011_l1_log +
+                 EU_accession*civ_soc_aid_l1_log, data = aid_data_95_ee)
+summary(cs_model)
+```
+
+Now simulation comes in! We can use simulation to get confidence intervals. Here, we will be using the function `mvrnorm` to simulate some data. Look at the help file for that function and what it does. 
+```{r}
+#set seed for replication
+set.seed(123)
+
+#We will take 500 samples from the sampling distribution
+#of our model's coefficients
+samp_beta <- mvrnorm(500,
+                     coef(cs_model),
+                     vcov(cs_model))
+dim(vcov(cs_model))
+dim(samp_beta)
+
+# 87% Monte Carlo/simulation based confidence interval:
+t(apply(samp_beta,
+        2, #why 2? look at help file and the "MARGIN" argument
+        quantile,
+        probs = c(0.065, 0.935)))
+```
+
+Let's compare that to CIs generated from the function `confint()`. Both produce asymptotic confidence intervals, but the first uses resampling/Monte Carlo methods. I suggest using these methods, as it is easier for us to get CIs for slightly more complicated models via simulation.
+
+```{r}
+confint(cs_model, level = 0.87)
+```
+
+We are now going to use the "average value approach" to simulating predicted outcomes and uncertainty around them. We want to see how predicted civil society strength varies according to lagged civil society assistance. In order to do this, there are a few thing we have to do first:
+```{r, results = "hide"}
+# we are going to let lagged log civil society assistance vary along its 
+# inner-quartile range. These will be the values over which we plot the predicted
+# civil society strength
+cs_aid_sim <- with(aid_data_95_ee,
+                   #quantile() here produces sample quantities based on the given
+                   #probability we provide it, here 0.25
+                   seq(quantile(civ_soc_aid_l1_log, 0.25, na.rm = T),
+                       quantile(civ_soc_aid_l1_log, 0.75, na.rm = T),
+                       length.out = 100))
+
+# we now need to create a matrix of hypothetical predictors. We will use the 
+# mean of lagged log GDP per capita; in order to see the effect of EU accession
+# leverage, we will also allow that to vary (otherwise, you usually use the mode
+# of categorical variables)
+x_mat_sim <- with(aid_data_95_ee,
+                  model.matrix(~ GDPpc_ppp_WB_2011_l1_log + 
+                                 EU_accession*civ_soc_aid_l1_log,
+                               data = data.frame(GDPpc_ppp_WB_2011_l1_log = 
+                                        mean(GDPpc_ppp_WB_2011_l1_log, 
+                                             na.rm = T), #mean of lagged log GDP
+                                      EU_accession = relevel(
+                                        factor(c("no leverage",
+                                                  "active", # vary EU accession
+                                                  "member")), 
+                                        ref = "no leverage"),
+                                      #calling above data for civ soc assist
+                                      civ_soc_aid_l1_log = rep(cs_aid_sim,
+                                                               each = 3))))
+
+
+#let's check dimensions
+dim(x_mat_sim)
+
+#how does it look? note the interaction effects included!
+head(x_mat_sim)
+
+```
+
+Now we have to do XBeta to get our predicted values! But instead of beta being a k x 1 vector, it is now a k x 500 (number of samples from our multivariate normal) matrix. So, what will the dimensions of this new object be? 
+```{r}
+cs_str_hat <- x_mat_sim %*% t(samp_beta)
+
+dim(cs_str_hat) #300 x 500
+
+#we only need quantiles for our confidence intervals
+cs_str_hat_quant <- apply(cs_str_hat, 1, #why 1? again look at MARGIN
+                      quantile, c(0.065, 0.5, 0.935))
+
+#creating data frame of predictions
+pred_df <- data.frame(PCS = cs_str_hat_quant[2, ], #why calling 2, 3, and 1?
+                      UB = cs_str_hat_quant[3, ],
+                      LB = cs_str_hat_quant[1, ],
+                      cs_aid = x_mat_sim[, "civ_soc_aid_l1_log"],
+                      EU_Leverage = rep(c("no leverage", "active", "member"), 
+                                         100)) #why can we do this?
+ 
+#Creating data for rug plot
+cs_aid_IQ <- dplyr::select(aid_data_95_ee, civ_soc_aid_l1_log, EU_accession) %>%
+  filter(civ_soc_aid_l1_log > quantile(civ_soc_aid_l1_log, 0.25, na.rm = T) &
+           civ_soc_aid_l1_log < quantile(civ_soc_aid_l1_log, 0.75, na.rm = T)) %>%
+  rbind(data.frame(civ_soc_aid_l1_log = rep(NA, nrow(pred_df) - nrow(.)),
+                  EU_accession = rep(NA, nrow(pred_df) - nrow(.))))
+```
+Now let's graph this!
+
+```{r}
+#a library with different colors for ggplot2
+library("RColorBrewer")
+
+ggplot(data = pred_df, aes(x = cs_aid, y = PCS, lty = EU_Leverage)) +
+  
+  geom_ribbon(aes(ymin = LB, ymax = UB, color = EU_Leverage),
+              alpha = 0.5,
+              fill = "gray70") +
+  
+  geom_line(aes(color = EU_Leverage)) +
+  #what do you think this does?
+  
+  geom_rug(data = cs_aid_IQ, aes(x = civ_soc_aid_l1_log, color = EU_accession), 
+           size = 1, inherit.aes = F) +
+  #rug plot
+  
+  scale_color_brewer(palette = "Dark2") +
+  #if you want to have some fun, change around the colors
+  #scale_color_brewer(palette = "Set3") +
+  #scale_color_brewer(palette = "Greys") +
+  #scale_color_brewer(palette = "PuOr") +
+  #scale_color_brewer(palette = "Set1") +
+  
+  xlab("Lagged Civil Society Assistance, Millions of Dollars, Log") +
+  ylab("Predicted Civil Society Strength") +
+  #labels
+  
+  theme_bw()
+  #theme
+```
+# Regression Diagnostics
+
+First we'll talk about (statistical) leverage! Points that are unusual (aka they are \textit{outliers}) with respect to the \textit{predictors}---that is, all of the $\mathbf{X}$---are said to have high \textit{leverage} because they can impact our coefficients. One way to assess this is called ``Cook's Distance," or a measure of an observation's influence. 
+
+We can write a function for Cook's Distance that computes a standard regression diagnostic and plots the results all in one. Useful if we want flexibility with different models and different observations!
+
+
+$$D_i=\frac{\sum_{j=1}^{n}(\hat{y_{j(i)}}-\hat{y_j})^2}{k\hat{\sigma}^2}$$
+
+
+Where $k$ is our number of coefficients, $\sigma^2$ is the variance of our model, and the numerator is an estimated mean of $\hat{y}$ when removing observation $i$.
+
+When we have multiple regressors in our model (and with an eye to using R for computing Cook's D), it's useful to write this formula as such: 
+
+$$D_i=\frac{e_{i}^2}{k\hat{\sigma}^2}\frac{h_{i}}{(1-h_i)^2}$$
+
+
+Where $h_{i}$ is the $i$'th diagonal element of the hat matrix - and each observation's leverage. 
+
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=20)}
+m1 <- lm(mpg ~ disp + wt, data = mtcars) #simple regression model
+
+#Now, the function
+cooks <- function(LM, x = "all") {
+  #browser()
+  #2 arguments
+  if (is.character(x) && x == "all") x <- 1:nrow(model.matrix(LM))
+  
+  resid <- LM$residuals 
+  k <- length(LM$coefficients) #number of coefficients estimated
+  num_1 <- resid^2 #squared residuals
+  denom_1 <- mean(resid^2) * k #setting up the numerator and denominator for Cook's Dist
+  num_2 <- hatvalues(LM)
+  denom_2 <- (1 - hatvalues(LM))^2
+  cooks_d <- ((num_1 / denom_1) * (num_2 / denom_2))[x] #Calculate Cook's D
+  plot_dat <- data.frame(x = x, 
+                            cooks_d = cooks_d) #x allows for flex in the # of obsvs
+  cooks_plot <- ggplot(plot_dat, aes(x = x, y = cooks_d)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = (4 / nrow(model.matrix(LM))), colour = "red") +
+  labs(x = "Observation", y = "Cook's Distance") +
+  theme_bw() #Plot with a standard cutoff for concern
+  return(list(plot = cooks_plot, data = plot_dat))
+}
+
+#Apply function for our model and 1st 20 observations
+test <- cooks(m1, 1:17)
+test$plot
+test$data
+cooks(m1, "all")$plot
+```
+
+
+This is one rule of thumb with Cook's distance: looking at points above 4/$n$, where $n$ is our number of observations. Sometimes, you'll see this as 4/$n-k$.
+
+Although it is useful to be able to write our own Cook's Distance function, do note there are pre-existing ``canned" functions. Your models won't always be compatible with these functions, but in simple cases they are useful. 
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=20)}
+#cooks.distance function from base R
+
+test2 <- as.data.frame(cooks.distance(m1)) #make this into a df
+test2$ident <- seq(1, nrow(test2)) #add observation index
+colnames(test2) <- c("cooksd", "obs") #add meaningful column names
+
+
+#plot
+cooks_plot <- ggplot(test2, aes(y = cooksd, x = obs)) +
+  geom_bar(stat= "identity") +
+  geom_hline(yintercept = (4 / nrow(test2)), colour = "red")
+  
+cooks_plot
+
+```
+
+**More Assumptions**
+
+Another assumption we may want to check is that our residuals (errors) are normally distributed (normality of errors assumption). We can do this by separating our residuals into quantiles and comparing their distribution to points produced randomly by a normal distribution (a q-q plot).
+
+If both sets of quantiles came from the same distribution, we should see the points forming a line that's roughly straight. 
+
+
+```{r, eval=TRUE, echo=TRUE, results='asis', message=FALSE}
+ggQQ <- function(LM) { # argument: a linear model
+     y <- quantile(LM$resid[!is.na(LM$resid)], c(0.25, 0.75))
+     x <- qnorm(c(0.25, 0.75))
+     slope <- diff(y)/diff(x)
+     int <- y[1] - slope * x[1]
+     p <- ggplot(LM) +
+     stat_qq(aes(sample=.resid), alpha = 0.5) +
+     geom_abline(slope = slope, intercept = int, color="blue")
+     return(p)
+    }
+
+ggQQ(m1)
+```
+    
+As stated before, it's often useful to be able to write these functions ourselves. Moving forward (particularly with your own data!) you might be in a situation with missingness, multilevel data, or other data quirks, and 'canned' functions aren't always able to give us reliable regression diagnostics. 
+
+That being said, in addition to the Cook's Distance canned function shown before, there are some other useful functions to be aware of: like `tidy` and `augment` from the `broom` package.
+
+1) `tidy` converts your model into a tidy tibble, and provides useful estimates about your model components. This includes the coefs and p-values for each term in the regression. It is similar to `summary`, but in a new format that is easier to work with, particularly if you want to do further analysis with your data.
+
+
+2) `augment` adds columns to the original data that was modeled, providing information about predictions, residuals, and Cook's Distance! As you can see, it shows this information for each type of the original points in your regression, in this case the type of car. This function *augments* the original data with more information from the model.
+
+    
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=20)}
+library(broom)
+tidy(m1)
+head(augment(m1))
+```
+
+Neat, huh? So, this means that for our plot above (Cook's distance) we could also do the following: 
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=20)}
+vals <- augment(m1)
+
+ggplot(data=vals, aes(seq_along(.cooksd),y=.cooksd))+
+    geom_bar(stat="identity")+
+    geom_hline(yintercept=4/length(vals$.cooksd), color="red")+
+    labs(x="Observation", y="Cook's Distance") +
+    theme_bw()
+```
+
+Other 'canned' functions that can be useful are found in the `stats` package and the `car` package (although most of these values can be gotten just by using `augment`):
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=20), message = FALSE, results = "hide"}
+library(stats)
+
+#Another cook's distance
+cooks.distance(m1)
+
+#dfbetas
+dfbetas(m1)
+
+#or, to get them all:
+influence.measures(m1)
+#note that this "marks" influential observations for you
+#with an asterisk
+
+library(car)
+#variance inflation factors
+#quantifies the severity of multicollinearity
+vif(m1)
+sqrt(vif(m1)) > 2 #look into this, is this a problem?
+
+```
+
+Other useful diagnostics include fitted value vs. residual plots and component + residual plots. The `plot` function allows you to get 4 standard diagnostic plots easily.
+
+```{r}
+plot(m1)
+```
+
+1) The Residuals vs Fitted values plot can help us with two things: 1) it can help us see if the constant variance assumption is appropriate (most often, if it isn't we would see a "funnel" in one direction or another), and 2) it can tell us whether we might need to transform the outcome variable in some way (if the line of best fit isn't reasonably straight.) In an ideal scenario, the red line should show no fitted pattern and be approximately horizontal at zero. Is this the case here?
+
+2) We discussed the Q-Q plot above! It helps us visually check the normality assumption. How does this one look?
+
+3) The Scale-Location plot is basically the first plot folded in half and compressed. It doesn't tell us much more, to be quite honest, but it does make it more clear if our residuals are spread equally along the range of our predictors. It is good to see a horizontal line with all points spread out equally. Is this the case here?
+
+4) The Residuals vs Leverage plot, as the name suggests, plots the standardized residuals of each observation against its leverage (remember only if both are high do we worry about how it affects our model). You can't really see it here, but R plots .5 and 1 Cook's Distance "contours" on this plot as well, which indicates where Cook's Distances of .5 and 1 would be. Some people say a Cook's Distance of $>1$ is concerning, but some people say that is extremely conservative. In addition, you'll see in this plot it identifies the top 3 most extreme points - Toyota Corolla, Fiat, and Chrysler Imperial - which have standardized residuals > 2. As a rule of thumb, some say that observations with a standardized residual > 3 are concerning and possible outliers - we don't see any here. Good news!
+
+Handily, all of these plots point out observations of which you may want to be wary.
+
+And to wrap up, a couple other tests which will be useful for you to know! 
+
+1) The Durbin Watson test to see if we have autocorrelated errors (violating independence of errors). The DW statistic will always be between 0 and 4, with a value of 2 signifying that there is NO autocorrelation detected in your sample. Values < 2 means there is positive autocorrelation, values > 2 indicate there is negative autocorrelation. 
+   
+2) Shapiro-Wilk's normality test. This test, generally speaking, examines normality. We can apply it to our residual terms to check for normality of errors. If the p value is > 0.05 the distribution of the data is NOT significantly different from the normal distribution (the normality assumption holds).
+   
+   
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=30)}
+#durbin watson
+durbinWatsonTest(m1) #is this a problem?
+
+#shapiro test
+shapiro.test(m1$residuals) #how does it look?
+```
+
+
+# Practice
+To do on your own:
+
+Take the `Guns` dataset in the `AER` package. Take a look at the dataset and use `?Guns` to get the codebook. 
+Regress the robbery rate on the percent of the state population that is male, the real per capita personal income in the state, and then an interaction between the population density and whether a shall carry law was in effect that year. 
+
+Use Monte Carlo simulation with 10,000 samples from the sampling distribution to get 80% confidence intervals around the coefficient estimates. 
+
+Then, use simulation to plot the predicted robbery rate as the population density varies from its 10th percentile to its 90th percentile dependent on if a shall carry law is in effect (don't worry about the rug plot).
+
+```{r, eval = FALSE}
+data(Guns)
+
+#estimate model
+guns_model <- lm(_________)
+
+set.seed(123)
+
+#sampling betas
+samp_beta_guns <- mvrnorm(____, 
+                          coef(____),
+                          vcov(____))
+
+#confidence intervals
+t(apply(____, 2, quantile, prob = c(.1, .9)))
+confint(guns_model, ____)
+
+#getting range of density
+density_sim <- with(Guns,
+                    seq(quantile(density, .1), quantile(density, .9),
+                        length.out = 100))
+
+#hypothetical predictor matrix
+ X_sim_guns <- with(Guns,
+                   model.matrix(~ ____,
+                      data = data.frame(male = mean(male),
+                                        income = mean(income),
+                                        law = c(____),
+                                        density = rep(density_sim, each = 2))
+                   ))
+
+robbery_hat <- X_sim_guns %*% t(samp_beta_guns)
+
+#we only need quantiles for our confidence intervals
+robbery_hat_quant <- apply(robbery_hat, 1,
+                      quantile, c(________))
+
+pred_df_guns <- data.frame(PP = robbery_hat_quant[2, ],
+                      UB = robbery_hat_quant[3, ],
+                      LB = robbery_hat_quant[1, ],
+                      Density = X_sim_guns[, "density"],
+                      Law = c("No", "Yes")[X_sim_guns[, "law"] + 1]) 
+
+ggplot(data =____) +
+  geom_ribbon(aes(____fill = Law), alpha = 0.5) +
+  geom_line() 
+
+
+```
+

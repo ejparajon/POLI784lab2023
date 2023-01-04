@@ -1,0 +1,370 @@
+---
+title: "Lab 13: Covariate Balancing and CBPS"
+author: "Eric Parajon with code adapted from Colin Case"
+output: html_document
+header-include:
+  - \usepackage{amsbsy}
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \DeclareMathOperator*{\argmin}{argmin} % thin space, limits underneath in displays
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+
+# Weighting
+
+Randomized controlled trials (RCTs) are often seen as the ``gold standard'' for estimating the effects of treatments, interventions, and exposures on outcomes. However, in the social sciences, it is not always possible to achieve randomization (and even in experimental studies, this doesn't happen either!), and we may have unobserved confounding variables that affect someone's likelihood of receiving treatment. Weighting helps adjust for the covariate imbalance between the treated and the control groups in a study. The weights on observations can help us "balance-out" the influence of each observation on the causal relationship. In this manner, we are making it so the treatment and control groups are *balanced* on average when considering observable characteristics (we obviously cannot balance on unobservable characteristics). 
+
+In this exercise we will use the `lalonde` dataset from the `cobalt` package, which is data on the [National Supported Work Demonstration](https://www.mdrc.org/publication/summary-and-findings-national-supported-work-demonstration), an experimental public employment assistance program in the US in the 1970s. The question we are trying to answer here is: does the participation in the national supported work demonstration (`treat`) help workers gain a higher wage? In thinking about this question, consider who is likely to opt-into this program if it is optional and not randomly assigned? 
+
+The outcome variable of interest is workers' earnings in 1978 `re78`. We are going to control for a couple of things such as pre-treatment wages `re74`, `re75`, if the person earned a degree `nodegree`, marital status `married`, as well as other demographic variables.
+
+## Examining Covariate Balance
+
+To start, we are going to look at covariate balance between the treated and the control groups. We are going to use the `bal.tab` function from the `cobalt` package, and we specify that we are interested in the average treatment effect on the treated (ATT):
+
+```{r}
+# Clear Environment
+rm(list = ls())
+# Load Packages
+
+pacman::p_load(WeightIt,
+               cobalt,
+               tidyverse,
+               stargazer,
+               survey,
+               jtools,
+               CBPS,
+               lmtest,
+               sandwich)
+# Load dataset Lalonde from cobalt package
+data('lalonde', package = 'cobalt')
+
+# Evaluate covariate balance on age, educ, married, nodegree, re74, and re75
+________(treat ~ age + educ + married + nodegree + re74 + re75,
+        data = lalonde, estimand = "ATT", m.threshold = .05)
+
+```
+
+As you can see from the output, none of the variables are balanced. Those who are older, married, and had higher income in 1974 and 1975 are much less likely to attend training (i.e. receive the treatment). Those without a high school degree and those who are more educated are more likely to attend job training. This raises questions regarding the ATT of the treatment in 1978 : Is it a treatment effect, or a function of the pre-existing differences that have not been taken into account in the treatment assignment process.
+
+## Propensity Scores
+
+We will now try to address this by computing propensity score weights. To recall, propensity scores are probabilities of a unit (e.g. a subject) being assigned to a particular treatment given a set of factors/ covariates:
+
+$$e(x) = Pr(T=1|X=x)$$
+
+for $T$ is the treatment assignment dummy and $X$ is a matrix of covariates.
+
+Propensity Score weighting uses this quantity to adjust for the influence of a particular observation in the treated and control groups. It turns out the weights for the ATT are defined as $w = 1$ for the treated group and $w = \frac{\hat{e(x)}}{1- \hat{e(x)}}$ for the control group.
+
+Let's try to compute this by hand. We will first fit a simple GLM regressing treatment on the covariates:
+
+```{r}
+# Estimate glm predicting treatment status
+ps.mod <- glm(__________________)
+# Create predictions from above model
+ps <- ______(______, type = "response")
+# View propensity scores
+head(ps)
+```
+
+These probabilities are our propensity scores $\hat{e(x)}$. Now, let's compute the weights:
+
+```{r}
+# Create variable name weights in lalonde df
+lalonde$weights <- ifelse(lalonde$treat ==1, 1, # w=1 for treatment
+                  ps/(1-ps)) # propensity score/(1-propensity score)
+```
+
+We should always check the distribution of our weights. If there are extreme values in the weights computed, we might need to use another weighting method, or trim some of the cases:
+
+```{r}
+# Subset to treatment and weights
+weights_dist <- lalonde %>% dplyr::select(treat, weights)
+# Add labls
+weights_dist$treat <- ifelse(weights_dist$treat == 0, "Control", "Treatment")
+
+# Plot weight density by condition looking for outliers  
+ggplot(weights_dist, aes(x=weights))+
+  geom_density()+
+  facet_wrap(~treat)+
+  theme_bw()
+
+```
+
+As we can see, the control weights are OK - we don't have extreme values. The computed weights range between 0-2. For the treatment group, all weights are equal to 1, so we don't have to worry about it in this case. If the causal estimand of interest is not ATT, then weights are computed differently for the treatment group and you may see some variations in the calculated weights for the treated.
+
+And these are then the weights for the ATE for each observation. We can now refit the model with these weights using the `weights=` parameter in `lm()`. Since we didn't weight by race, we also want to make sure we control for that factor in this model. Let's compare the results between the model without weighting and with weighting:
+
+```{r}
+# Estimate and View model without weights
+lalonde_model_noW <- lm(____ ~ _________, data=lalonde)
+summary(lalonde_model_noW)
+# Estimate and view model with weights
+lalonde_model_w <- lm(____ ~ _________, data = lalonde, weights = weights)
+summary(lalonde_model_w)
+```
+
+
+As you can see, after weighting our observations, the treatment is now significant whereas without weights it would be not significant!
+
+
+## The `WeightIt` package
+
+Now that you understand how weighting works under the hood, we will turn to the `WeightIt` package that simplifies this process. `WeightIt` is a very powerful package for computing different kinds of weights and examining the weighting result. Let's look at how you can compute weights with `WeightIt`.
+
+You compute the weights with the `weightit` function, which uses the same set of parameters from the `bal.tab` function:
+
+```{r}
+# Use weightit to calculate weights
+W.out <- ________(______ ~ ____________________________,
+        data = lalonde, estimand = "ATT", method = "ps")
+W.out
+```
+
+This creates a `Weightit` object, which gives you a summary of the weight computation outcome. You can get more information out of it by calling `summary()` on it:
+
+```{r}
+# View w.out
+summary(W.out)
+```
+
+Now let's reexamine covariate balance on the weightit object:
+
+```{r}
+# Re-examine covariate balance after weighting
+_________(W.out, m.threshold = .05, disp.v.ratio = TRUE)
+```
+
+Now you can see that every covariate is balanced between the treated and the control group. Now, let's try to compare the hand-computed weights and the weights generated by `WeightIt` to validate our calculations:
+
+```{r}
+# Merge hand and weightit weights
+wdf <- data.frame(hand = lalonde$weights,
+                  weightit = get.w(W.out))
+# Calculate correlation
+cor(____)
+
+# Plot Weights
+ggplot(wdf, aes(x=___, y=_____))+
+  geom_point()+
+  geom_abline(slope=1, lty=2)+
+  xlab("Weights computed by hand")+
+  ylab("Weights computed by WeightIt")+
+  theme_bw()
+```
+
+And the correlation matrix confirms our calculations - they are exactly the same as those generated by `WeightIt` and they fall perfectly along the 45 degrees diagonal line (perfect correlation).
+
+There is an alternative method, called Covariate Balancing Propensity Score Weighting (`CBPS`), that performs a similar procedure than the `ps` method we used above. The difference comes in that `CPBS` estimates propensity scores such that both covariate balance and prediction of treatment assignment are maximized. The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously. Let's see how these weights compare to the `ps` process we used in `WeightIt`.
+
+```{r}
+# Create CPBS Weights
+CPBS.out <-  ______(_____ ~ ____________________, 
+			data = lalonde, ATT = TRUE)
+
+# Merge hand and weightit weights
+wdf <- data.frame(cbps = CPBS.out$weights,
+                  weightit = get.w(W.out))
+# Calculate correlation
+cor(wdf)
+
+# Plot Weights
+ggplot(____, aes(x=_____, y=______))+
+  geom_point()+
+  geom_abline(slope=1, lty=2)+
+  xlab("Weights computed by CBPS")+
+  ylab("Weights computed by WeightIt")+
+  theme_bw()
+
+
+
+```
+As you can see, the two are still highly correlated, but with some slight differences this time. Let's now see what this looks like when we include the weights in the regression output. We first need add the weights from `W.out` to the data frame, and then use `lm` to estimate the model.
+
+```{r}
+# Model using WeightIt Weights and controlling for race
+fit1 <- lm(____ ~ ______, data = lalonde, weights = get.w(W.out))
+summary(fit1)
+
+# Model using CBPS Weights and controlling for race
+fit2 <- lm(____ ~ ______, data = lalonde, weights = CPBS.out$weights)
+summary(fit2)
+
+```
+
+
+
+## Survey Weighted Regression
+
+How can we make inference out of these weights? We have explored `lm()` and `glm()` with the weights option, which finds:
+
+$$\argmin_\beta \ w_i \sum^N_{i=1}(y_i- X_i\beta)^2$$
+where $w_i$ refers to the propensity score weights for individual $i$.
+
+It turns out using `lm()` is not giving us an accurate estimation of the ATT because it only applies the weights on the errors in the least squares estimation (aka Weighted Least Squares - WLS). However, we should also consider the loss of precision due to the presence of sampling weights:
+
+$$\argmin_\beta \ s_iw_i \sum^N_{i=1}(y_i- X_i\beta)^2$$
+
+where $s_i$ is the sampling weight in a survey setting. This type of survey-weighted linear regression model can be fitted with the `survey` package:
+
+```{r}
+# Specify svydesign with no clusters
+d.w <- svydesign(ids = ~1, weights = get.w(W.out),
+                     data = lalonde)
+# Fit model taking into account survey weights
+fit <- svyglm(re78 ~ treat, design = d.w)
+# View Fit 
+summ(fit, confint = TRUE) 
+```
+
+And it turns out after adjusting for survey-weights, we found the effect of the treatment is actually not statistically significant after considering for survey sampling weights on top of propensity score weights.
+
+If you have survey weights already, one way you could incorporate them in `WeightIt` is to specify the `s.weights` argument in `weightit()`. Then, the ATT weights are the product of the propensity score weights and the survey weights supplied. Using these ATT weights, you can then fit the WLS as usual but the standard errors will have to be adjusted by using the sandwich estimator (`sandwich::vcovHC`).
+
+
+
+
+# Exercise: Priming Norwegian Voters about the Municipal Reform, 2014
+
+In Norway, there is a lot of small municipalities (similar to U.S. Counties) scattered across the country. There has been a debate on merging these small municipalities for roughly 2 decades. Proponents for the reform argue that this helps achieve the economies of scale of providing services to the localities, whereas opponents argue that each locality is unique. Given that the center-periphery cleavage is quite salient in Norway and overlaps with the linguistic conflict between Nynorsk and Bokmål speakers, municipal reform was a highly salient political issue in Norway at the time.
+
+In 2014, the Norwegian Citizens Panel (NCP) (Wave 3) conducted a randomized experiment on the respondents by coincidence. There was a question about whether the participant would pay 1000 Norwegian Krone (~$115) to maintain the current municipal structure. This primes the respondent that the current municipal structure can be costly and merging them could save the taxpayers' money. Note that the assignment of this group of questions about municipal reforms is random, so even if the priming is not intentional, it remains a valid experimental treatment nonetheless.
+
+In this exercise, you are going to explore **if priming respondents the cost of the existing municipal structure would lead to support for the Conservative Party**. The Conservative Party of Norway supports municipal reforms of cutting down the number of municipalities, along with the Center Party and Progress Party. The Conservative Party would go on to form a center-right cabinet after emerging second in the 2017 parliamentary election. They will go on to implement the reform after forming a center-right government. The reforms were eventually completed on 1/1/2020.
+
+Since the treatment assignment is unintentional, it is unclear if the covariates are balanced for the treated and control group. Therefore, it is necessary to check covariate balance and generate weights to balance out the influence of particular observations given their covariate values.
+
+In the dataset `ncp_final.rds`, I have attached the survey weights from the NCP for you. The variables are as follows:
+
+
+- `conservative` : Self-reported affinity to the Conservative Party of Norway. Continuous. 1 = Intensely dislike; 7= Intensely like.
+- `treat` : If the respondent has been asked the question : "Would you rather pay NOK 1000 per year to maintain the current municipal structure?". Dummy.
+- `interest` : Self-reported Political Interest. Continuous. 1= Very Interested; 5 = Not Interested.
+- `gender` : Biological Sex. Dummy. 1 = Male, 2= Female.
+- `region` : Region of the respondent. 1 = Oslo. 2= Østlandet. 3 = Sørlandet. 4= Vestlandet. 5=Trøndelag. 6 = Nord-Norge.
+- `edu` : Highest level of education attained. 1 = No Education/ Elementary School. 2= Upper Secondary School. 3= Univesity/ Community College.
+- `yob` : Year of Birth. 1 = 1939 or earlier. 2= 1940-1949. 3= 1950-1959. ... 7= 1990 or later.
+- `weight` : Survey weights from NCP. Continuous.
+
+Take note that this dataset already has survey weights which are different from the weights we will calculate.
+
+Using bal.tab, look at the balance of demographic variables (`gender`, `region`, `edu`, `yob`) on the treatment before and after weighting. Focus on the ATT. How do they look?
+
+```{r}
+# Load data
+ncp_final <- readRDS("ncp_final.rds")
+
+# Look at balance of demographic variables
+bal.tab(______ ~ _____ + _____ + ____ + _____, 
+        data = ncp_final, estimand = ______, m.threshold = .05)
+```
+
+The balance table suggests that education and year of birth are unbalanced between the treated and the control group. Use weightit to weight them (you should do this even on variables that are listed as balanced). 
+
+```{r}
+# Create weights
+W.out <- weightit(_____ ~ ______ + _____ + ____ + ______,
+                  data = _______, estimand = ______, method = "ps")
+# Re-check balance with weights
+bal.tab(W.out, m.threshold = .05, disp.v.ratio = TRUE)
+```
+
+
+Regress the outcome variable on the treatment, `interest`, and the demographic variables. Fit two models: 1) One with no adjustment; 2) a Survey-Weighted GLM with propensity score weights. Then, use `summ` to take a look at the 95% Confidence Interval on the effect of the treatment from the survey-weighted GLM.
+ 
+
+```{r}
+# without any adjustment
+# without any adjustment
+tmod1 <- lm(conservative ~ treat + interest + as.factor(gender) + 
+              as.factor(region)+ as.factor(edu) + as.factor(yob) , ncp_final)
+
+# With Survey-weights & PS weights adjustment
+
+# Create survey weights using svydesign
+design <- ________________________
+
+# Estimate model
+tmod2 <- svyglm(____________________)
+# 95% CI
+summ(tmod2, confint = TRUE) 
+```
+
+Compute propensity score weights, INCLUDING survey weights provided (`weights`). Then, fit a WLS with weights computed and correct their standard errors with the sandwich estimator.
+
+To include our survey weights, we specify them with the `s.weights` parameter in `weightit()`. Then, we multiply the resulting weights with the survey weights. When fitting the WLS, we use this product of weights, then we will correct the standard errors with the sandwich estimator.
+
+```{r}
+library(lmtest)
+library(sandwich)
+# include survey weight variants:
+
+ncp_clean <- ncp_final %>% dplyr::select(treat, interest, 
+                                         gender, region, edu, yob, 
+                                         conservative, weights)
+
+# remove NAs, otherwise there will be NAs in the weights
+ncp_clean <- na.omit(ncp_clean)
+
+# Calculate weights with survey weights
+W.out <- weightit(_______________________, s.weights="weights")
+# Check balance
+bal.tab(W.out, m.threshold = .05, disp.v.ratio = TRUE, un=TRUE)
+```
+
+Again, the covariates are all balanced now.
+
+```{r}
+
+# Multiply the survey weights with the balance weights to create att.weights
+att.weights <- W.out$weights * ncp_clean$weights #product of weights
+
+# Estimate the model using lm and specifying weights
+tmod3 <- lm(____________________, weights = att.weights)
+
+#correct SE with the sandwich estimator:
+corr_se <- sandwich::vcovHC(tmod3) %>% diag %>% sqrt
+```
+
+Report all models in the same table using stargazer (make sure to specify html document). What is your conclusion?
+
+```{r results="asis"}
+#Putting it all together:
+
+stargazer(_____, _____, _____, type="html",
+          covariate.labels = c("Primed",
+                               "Political Interest",
+                               "Female",
+                               "Østlandet",
+                               "Sørlandet",
+                               "Vestlandet",
+                               "Trøndelag",
+                               "Nord-Norge",
+                               "Completed Upper Secondary Education",
+                               "Completed University/ College Education",
+                               "Born between 1940-1949",
+                               "Born between 1950-1959",
+                               "Born between 1960-1969",
+                               "Born between 1970-1979",
+                               "Born between 1980-1989",
+                               "Born in or after 1990",
+                               "Intercept"),
+          se=list(NULL, NULL, corr_se),
+          column.labels = c("No Weights OLS", "PS Weights SWLS", "PS/NCP Weights SWLS"),
+          star.cutoffs = c(.10,.05,.01,.001),
+          star.char = c("+","*","**","***"),
+          column.sep.width = "10pt",
+          notes = c("p<.10+, p<.05*, p<.01**, p<.001***"),
+          single.row = TRUE,
+          notes.append=FALSE)
+```
+
+From the three models reported, we see that there is a small positive effect of being primed the cost of the existing municipal structure. Across three models, the effect is significant, p<.10+. These primed respondents are likely to increase their rating of the conservative party .1 point more on a 1-7 scale. The effect size is modest but it is statistically significant in all three models, regardless of the weighting method used.
+
+
+

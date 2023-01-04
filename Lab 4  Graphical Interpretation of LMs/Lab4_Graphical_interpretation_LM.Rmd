@@ -1,0 +1,304 @@
+---
+title: "Lab 4: Graphical interpretation of LMs"
+author: "Eric Parajon"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, include = TRUE)
+
+#Clear workspace
+rm(list=ls())
+
+#The pacman package is required to load/install the additional packages. Uncomment the line below to install the package.
+#install.packages("pacman")
+
+#Installing and loading packages for use
+pacman::p_load(tidyverse,palmerpenguins,ggeffects)
+
+
+#Creating a ggplot theme for use in several figures throughout the code.
+plot_theme = theme(text = element_text(size=11),  
+                   panel.grid.minor = element_blank(),
+                   panel.grid.major = element_blank(),
+                   panel.background = element_blank(),
+                   plot.background = element_rect(fill = "transparent",colour = NA),
+                   axis.text = element_text(color="black"),
+                   axis.line = element_line(colour = "black"),
+                   strip.text.y = element_text(angle = 0), axis.title.y = element_text(angle=90, hjust=.5, vjust=.5),
+                   axis.title = element_text(lineheight=1.1), 
+                   legend.position = "bottom", 
+                   legend.key = element_rect(colour = "transparent",  fill = "transparent") 
+) 
+
+
+```
+Today's lab will focus on graphical interpretation of LMs using a variety of R tools.
+
+Don't forget to set your working directory!
+```{r, eval = FALSE}
+
+setwd()
+
+```
+
+#Part 1: Ggplot visualizations
+Lets begin by returning to the mtcars data set and creating a basic scatterplot of displacement (disp) vs mpg.
+
+```{r, message=FALSE, warning=FALSE}
+carsplot <- ggplot(data = mtcars, aes(x = ____, y = ____)) + 
+  ____(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()
+
+```
+
+Okay great, but what if we wanted to plot the linear relationship between our x and y?
+
+```{r}
+carsplot + geom_smooth(method = "lm", se = FALSE, 
+                       color = "darkgrey", size = 0.75)
+#geom_smooth is for fitted lines.
+#se=TRUE plots confidence intervals
+#We can adjust the color and size of the line plotted.
+#Also, note that we just added a layer over carsplot - did we change the carsplot object itself?
+```
+
+Right now, we're using color as the aesthetic mapped to a specific explanatory variable (color represents the number of cylinders). We can play around with this: 
+
+```{r}
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(size = cyl), colour = "red") +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_bw()
+
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_bw()
+```
+
+What are the benefits/drawbacks of each of these strategies? Think about how well the plot communicates information about the types of variables plotted as well as the relationship between them.
+
+The above are great places to start out visualizing any potential relationships between your variables.
+
+Now let's jump back into the palmerpenguins dataset to perform some more in-depth visualization of regression models.
+
+
+Here we will evaluate the association between penguin body mass (measured in grams) and flipper length (measured in mm).
+
+Let's suppose our main research question is to determine whether body mass was associated with flipper length We will set the body mass as our dependent variable and flipper length as our independent variable (or predictor of interest).
+
+
+<div align="left">$\large E[Body_mass_{i} | Flipper_length_{i}] = \beta_0 + \beta_1  Flipper_length_{i} + \epsilon,$</div>
+
+where $E[Body_mass_{i} |  Flipper_length_{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$. 
+
+
+```{r}
+#We could start by plotting the association between the penguin's body mass and flipper length
+
+mass_flipper <- ggplot(data = penguins, 
+                       aes(x = flipper_length_mm,
+                           y = body_mass_g))+
+  geom_point()
+
+#Does there seem to be an association?
+
+ 
+#Yes! as flipper length increases, the body mass also increases. There appears to be a positive relationship between penguin body mass and flipper length.
+
+```
+
+Now, we can construct a linear regression model with body mass as the dependent variable and flipper length. as the independent variable (or predictor of interest).
+
+
+```{r}
+linear.model1 <- lm(body_mass_g ~ flipper_length_mm, data = penguins)
+summary(linear.model1)
+
+#Using the broom package to tidy the model data and format into a more easily usable form.
+temp_lm = broom::tidy(linear.model1, se = 'standard', conf.int = TRUE,conf.level = 0.95) %>% 
+  filter(term=="flipper_length_mm")
+
+
+#Visualize the results in a coefficient plot
+Penguin_results <- ggplot(data=temp_lm, aes(x=term, y=estimate)) + 
+    geom_hline(yintercept=0, color="red", size=.5) +
+    geom_errorbar(aes(ymin=conf.low, ymax=conf.high, width=0), size=.5, position=position_dodge(width=0.5)) +
+    geom_point(aes(y=estimate), size=1.75, position = position_dodge(width=0.5)) +
+    ylab("Effect of Flipper Length on Penguin Body Mass") +
+    xlab("")+
+    coord_flip()+
+  geom_text(aes(y=estimate,label=round(estimate, digits=2)), size=2.5, vjust=-1.5, position = position_dodge(width=.2))
+
+
+#Okay great so there's an effect! But what about confounders? Perhaps the penguins species is also important.
+
+```
+Lets again plot it but this time break out the results by species.
+
+```{r}
+mass_flipper_species <- ggplot(data = penguins, 
+                       aes(x = flipper_length_mm,
+                           y = body_mass_g)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Flipper length and body mass",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species")
+
+#Definitely seems like species could be important to capture in our model. So let's add to our current model by including a confounder.
+
+```
+Now our model looks like this.
+<div align="left">$\large E[Body\_mass_{i} | Flipper\_length_{i}], Species_{i}] = \beta_0 + \beta_1  Flipper\_length_{i}+ \beta_2  Species_{i} + \epsilon$</div>
+
+where $E[Body\_mass_{i} |  Flipper\_length_{i}], Species{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$ and controlling for species of the penguin $i$.
+
+```{r}
+linear.model2 <- lm(body_mass_g ~ flipper_length_mm+species, data = penguins)
+summary(linear.model2)
+
+#Using the broom package to tidy the model data and format into a more easily usable form.
+temp_lm_2 = broom::tidy(linear.model2, se = 'standard', conf.int = TRUE,conf.level = 0.95) %>% 
+  filter(term!="(Intercept)")
+
+
+#Visualize the results in a coefficient plot
+Penguin_results_2 <- ggplot(data=temp_lm_2, aes(x=term, y=estimate)) + 
+    geom_hline(yintercept=0, color="red", size=.5) +
+    geom_errorbar(aes(ymin=conf.low, ymax=conf.high, width=0), size=.5, position=position_dodge(width=0.5)) +
+    geom_point(aes(y=estimate), size=1.75, position = position_dodge(width=0.5)) +
+    ylab("Effect of Flipper Length and Species on Penguin Body Mass") +
+    xlab("")+
+    coord_flip()+
+  geom_text(aes(y=estimate,label=round(estimate, digits=2)), size=2.5, vjust=-1.5, position = position_dodge(width=.2))+
+  plot_theme
+
+```
+
+Okay great, but what if we want to visualize substantive effects? For this we can use our old friend predict()!
+
+```{r}
+
+newData <- expand.grid(flipper_length_mm = seq(190, 200, by = 5),
+                       species=c("Adelie","Chinstrap","Gentoo"))
+
+plotData <- as.data.frame(predict(linear.model2, newdata=newData, interval='confidence'))
+
+#Pulling it all together
+int_dat <- data.frame(newData, plotData)
+
+subeffects_plot <- ggplot(int_dat, aes(x=flipper_length_mm, y=fit, ymin=lwr, ymax=upr,color=species)) +
+        geom_pointrange() +
+ scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Flipper length and body mass",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species")
+subeffects_plot+
+  plot_theme
+
+
+```
+
+## Interaction analysis
+Additionally, in other models we may be interested in exploring the interaction between variables. Often these interaction effects are difficult to interpret without graphic aids. 
+
+In this example, suppose we are interested in knowing if the effect of body mass on bill length is attenuated by the sex of the penguin. We begin by plotting the data and then perform interaction analysis.
+
+Our regression equation looks like this:
+
+$body\_mass = B0 + B1*bill\_length + B2*sex + B3*bill\_length*sex+ \epsilon$
+
+```{r}
+#First let's plot the raw data to see if there's anything there.
+penguins %>% 
+  # drop rows with missing data
+  drop_na(sex) %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = sex)) +
+  geom_point() +
+  facet_wrap(~ sex)
+
+penguin_interact<-lm(bill_length_mm~body_mass_g*sex,data=penguins)
+
+tidy_penguin_interact = broom::tidy(penguin_interact, se = 'standard', conf.int = TRUE,conf.level = 0.95) 
+
+#Next we'll use ggpredict to get the marginal effects for the main effects and the interaction term.
+#There are a ton of different packages that do similar things make_predictions from jtools is also great.
+
+y_hat <- ggpredict(penguin_interact, terms = c("body_mass_g", "sex"))
+
+#This returns predicted values of the dv
+y_hat
+
+#Plotting interaction effects
+  
+  #First extracting data from the model
+model_data <- penguin_interact$model
+  #Next, rename group to sex 
+y_hat <- 
+  y_hat %>% 
+  rename(sex = group)
+
+
+#Plotting
+ggplot(data = y_hat, aes(x = x, y = predicted, fill = sex)) +
+  #plot the fitted line
+  geom_line() +
+  #plot the confidence intervals
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.3) +
+  #plot the model data
+  geom_point(data = model_data, aes(x = body_mass_g, y = bill_length_mm),
+             size = 2, shape = 21, alpha = 0.5) +
+  facet_wrap(~ sex, scales = "free") +
+  labs(title = "The Effect of Body Mass on Bill length by Sex Among Penguins",
+       x = "Body mass (grams)",
+       y = "Predicted Bill length",
+       fill = "Sex",
+       caption = "Fitted line estimate with OLS. \n The shaded region shows the 95% confidence interval.") 
+
+```
+
+#Part 3: LM practice
+Use the msleep dataset to model how body weight (bodywt) and brain weight (brainwt) influences total REM sleep (sleep_rem). Then create a model including an additional predictor (of your choice). Create a coefficient plot of the results of the two models and compare them.
+
+```{r}
+glimpse(msleep)
+
+#Creating model 1
+model1 <- lm(______)
+
+#Tidying model 1
+model1_tidy<-______
+  mutate(model = "Model 1")
+
+#Creating model 2
+model2 <- lm(______)
+
+#Tidying model 2
+model2_tidy<-______ %>% 
+  mutate(model = "Model 2")
+
+#Combine results into a single dataframe
+sleep_results <- bind_rows(model1_tidy, model2_tidy)
+
+
+#Plotting (make sure to assign color and shape to the model variable in the ggplot call)
+sleep_results_plot <- ggplot(_____)
+
+
+#Interpret 
+```
+
+

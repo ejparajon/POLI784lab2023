@@ -1,0 +1,470 @@
+---
+title: '784 Lab 2: Review of Tidyverse and ggplot'
+author: "Eric Parajon"
+output:
+  pdf_document:
+    keep_tex: TRUE
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, include = FALSE)
+```
+
+# Tidyverse Review
+\medskip
+1. Again, it is important to save the document you are using in a central folder. Then, set your working directory to that folder. It's also important to clear your environment before working in a new document.
+```{r, include = TRUE, eval = FALSE}
+getwd() #what is your current working directory?
+
+setwd(____) #in the parentheses, set the working directory to the folder where
+#you save this file. Realistically, this isn't super relevant now because
+#you're not reading in external data, but it's a good habit to get into!
+
+rm(list=ls()) #clear global environment
+
+
+#The pacman package is required to load/install the additional packages. Uncomment the line below to install the package.
+#install.packages("pacman")
+
+#Installing and loading packages for use
+pacman::p_load(tidyverse,ggthemes,nycflights13)
+
+
+```
+
+2.The tidyverse allows us to use the piping operator `%>%`, which is a useful piece of code (base R can do this too with |>) . 
+
+It pipes an object (either by itself or created by another function) into the next function in the sequence, as the first argument. This makes the code much easier to read. 
+
+For example, we could calculate the standard deviation of the `mpg` variable in the `mtcars` dataset in the following ways:
+
+
+```{r, include = TRUE, echo = TRUE}
+library(tidyverse)
+
+#normal
+sd(mtcars$mpg)
+
+#piping
+mtcars$mpg %>% 
+  sd()
+
+#Does it return the same value?
+```
+That is a very simple example, of course, and using a pipe in this case does not really gain you much. However, pipes and the myriad of tools in the `tidyverse` can make our work much, much easier. The [`dplyr`](https://dplyr.tidyverse.org/) package in the `tidyverse` allows us to manipulate data much more easily than in base R. 
+
+`dplyr` allows us to manipulate our data in a structured way. The key functions are `mutate()`, which creates new variables, `select()`, which allows us to pick variable by characteristics of their names, `filter()`, which allows us to choose rows according to criteria we define, `summarise()`, which allows us to "reduce multiple values down to a single summary", and `arrange()`, which allows us to order the observations according values of 1 or more variables.
+
+RStudio makes useful cheat sheets for their packages, including [`dplyr`](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf).
+
+
+### Star Wars example
+
+```{r}
+#1. Star Wars example
+data(starwars)
+  #Let's make our data into a tibble
+
+#Tibbles are evolution of data.frame
+#Inherits nominally, but not strictly!
+  #Does not match partial variable names
+  #Does not convert character vectors to factors
+  #Always returns a tibble when [ is used
+  #Allows readable variable names
+
+dplyr::as_tibble(starwars)
+
+  #Now that we have our data imported, we should start exploring it to see exactly what we have 
+
+  #the glimpse() function is quite similar to base R's str function
+glimpse(starwars)
+ #What if we want to pull a specific piece of data?
+snip<-slice(starwars, 10:11)
+
+  #What if we want some summary stats on specific variables?
+starwars %>%
+  group_by(homeworld) %>%
+    count() %>% 
+arrange(desc(n))
+
+starwars %>%
+  group_by(hair_color) %>%
+  count() %>% 
+  arrange(desc(n))
+
+```
+
+```{r}
+#We should start to do some column manipulation now that we have some variables we could be interested in 
+d1<-select(starwars, name, species, mass,height,gender,films)
+
+#So now that we have a smaller tibble let's try and do some analysis.
+  #What species are the heaviest and which are the lightest?
+
+d1 %>%
+  group_by(species) %>%
+  summarise(avg = mean(mass, na.rm=TRUE)) %>%
+  arrange(desc(avg))
+#Hutts are the heaviest!
+
+#Okay great, but what if we want some information that's not explicitly contained in the data? 
+  #What if for example, you wanted to know the BMI of a bunch of characters?
+  #You can use mutate to create new variables.
+
+Star_BMI<-d1 %>%
+  mutate(bmi = mass/((height/100)^2)) %>%
+  arrange(desc(bmi)) %>%
+  select(name, species, height, mass, bmi)
+
+#Now what if we only want to BMI of Humans characters?
+
+Human_BMI<-Star_BMI %>% 
+  filter(species=="Human") 
+
+#What if we wanted to create a new variable that combined a characters name with where they were born?
+#This is easy using tidyr (another package in tidyverse suite)
+starwars %>%
+  unite(name_homeworld, name, homeworld) %>% 
+  select(name_homeworld)
+
+```
+## Joins
+
+```{r}
+
+# Load data 1
+(dates <- read_csv("https://bit.ly/DM22_dates"))
+
+# Load data 2
+(works <- read_csv("https://bit.ly/DM22_works"))
+
+
+#Inner join
+#With an inner_join(x, y), only observations that appear in both x and y datasets are returned
+
+# Do inner join
+dates_works <- inner_join(dates, works) 
+(dates_works)
+
+
+#Left & Right Join
+#A left_join(x, y) call returns all observations in x, and drops observations that only appear in y
+#Variables in y that do not exist in x are appended to x in the returned tibble.
+
+#The same is true for a right_join(x, y), but with the roles of x and y reversed.
+
+dates_someworks <- left_join(dates, works) 
+(dates_someworks)
+
+
+dates_allworks <- right_join(dates, works) 
+print(dates_allworks, width=70)
+
+
+#Full join
+#Finally, a full_join(x, y) returns all observations and all variables in either in x or in y (filled with NAs)
+
+
+alldates_allworks <- full_join(dates, works) 
+print(alldates_allworks, width=70)
+
+```
+
+## Pivoting
+Pivoting: Wide -> Long
+With pivot_longer(), you can take values of a variable that are stored as variable names pivot them onto the cells of a single (implicit) variable column
+
+
+```{r}
+(relig_income)
+#This data set has counts based on a survey which (among other things) asked people about their religion and annual income:
+
+relig_income_long<-relig_income %>% 
+  pivot_longer(!religion, names_to = "income", values_to = "count")
+
+#The first argument is the dataset to reshape, relig_income.
+
+#The second argument describes which columns need to be reshaped. In this case, it’s every column apart from religion.
+
+#The names_to gives the name of the variable that will be created from the data stored in the column names, i.e. income.
+
+#The values_to gives the name of the variable that will be created from the data stored in the cell value, i.e. count.
+
+
+```
+Pivoting: Long -> Wide
+
+With pivot_wider(), we move in the opposite direction: your units are distributed over multiple rows, so pivot until you have a single case per row of your tibble
+
+
+```{r}
+(fish_encounters) 
+#This dataset, contributed by Myfanwy Johnston, describes when fish swimming down a river are detected by automatic monitoring stations:
+
+fish_encounters_wide<- fish_encounters %>% 
+          pivot_wider(names_from = station, values_from = seen)
+
+#In this case the NAs mean no fish was recorded so we can convert that to zero like this
+
+fish_encounters %>% pivot_wider(
+  names_from = station, 
+  values_from = seen,
+  values_fill = 0
+)
+
+```
+# Part 2: ggplot
+
+`ggplot` is very important, and requires some time and patience to get to know well. We won't have time to dive fully into it, but we will begin reviewing the following code so you become more familiar. R has its own built-in plot function, but ggplot is far more flexible and creates far more descriptive (and thus useful!) plots.
+
+For a comprehensive 'cheat sheet', see: https://www.maths.usyd.edu.au/u/UG/SM/STAT3022/r/current/Misc/data-visualization-2.1.pdf
+
+
+```{r}
+#we have to load the package first
+library(ggplot2)
+```
+
+
+To begin, we can use the 'qplot' or 'ggplot' commands. I use ggplot. It's more customization.
+
+```{r}
+data(mtcars)
+
+qplot(x = disp, y = mpg, data = mtcars, color = cyl, geom = "point") 
+#x and y are independent + dependent variables, 
+#data can be specified (or use mtcars$var),
+#color distinguishes a characteristic over which to map color
+#and geom is a plot type
+
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + geom_point(aes(color = cyl))
+#Note the similarities above. 
+#ggplot is more flexible in that you map to different `aesthetics'- 
+#hence why we use 'aes.' Plenty of examples below to dig into this more! 
+```
+
+What are some ways we can make this plot clearer?
+
+```{r}
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + #we add 'layers' with +
+  geom_point(aes(colour = cyl), size = 2) + #point=scatterplot
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon")+ 
+  #label x and y axes, give the plot a main title. Note the quotes!
+  scale_colour_continuous(name = "Cylinders")+ #label the scale
+  theme_bw() #make the plot background blank w/grid lines
+```
+
+You can also assign this plot to an object and save that object as a .pdf file.
+
+```{r, message=FALSE, warning=FALSE}
+carsplot <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()
+
+#One method for saving plots:
+#pdf("Plot1.pdf")
+#carsplot
+#dev.off()
+
+#Where do these plots go?!
+
+#Unique to ggplot:
+#ggsave("Plot1a.pdf") #can edit image sizes as well
+```
+
+## Themes
+As you've hopefully seen ggplot is highly customization. One way to standardize your graphs and avoid repeating your code to control ancillary parameters (e.g. color palettes, axes labels, etc.) is to use a ggplot() theme that includes bundles of code. This is what we were doing using theme_bw() above. 
+
+You can also create custom themes yourself!
+
+```{r}
+#Here is a theme I use often
+
+plot_theme = theme(text = element_text(size=11),  #set text size to 11
+                   panel.grid.minor = element_blank(), #these next two lines set the grid lines to null
+                   panel.grid.major = element_blank(),
+                   panel.background = element_blank(),#these lines make the background of the plot blank
+                   plot.background = element_rect(fill = "transparent",colour = NA),
+                   axis.text = element_text(color="black"), #setting axis text to black 
+                   axis.line = element_line(colour = "black"),#setting axis lines to black 
+                   strip.text.y = element_text(angle = 0), axis.title.y = element_text(angle=90, hjust=.5, vjust=.5),#adjusting the angle of text
+                   axis.title = element_text(lineheight=1.1), #increasing height of axis title
+                   legend.position = "bottom",  #Placing the legend at the bottom of the figure
+                   legend.key = element_rect(colour = "transparent",  fill = "transparent") #setting legend to transparent
+) 
+
+
+#Using the theme
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  plot_theme #no () after the custom theme call
+```
+As you can see there are tons of options that you can set yourself. Alternatively you can use existing gplot_themes. Here are some of the most popular
+```{r}
+#bw
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()
+
+#minimal
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_minimal()
+
+#classic
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_classic()
+
+#If you want even more themes you can use the ggthemes library!
+#install.packages("ggthemes")
+library(ggthemes)
+
+#WSJ
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_wsj()
+
+
+#538
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_fivethirtyeight()
+
+
+#The Economist
+ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_economist()
+
+```
+## Facets
+Using facets lets you create multi-panel plots based off a given variable.
+There are two different ggplot functions to use to facet. 
+```{r}
+#1. facet_wrap() "wraps" a 1d ribbon of panels into 2d. Essentially, creating a square grid of panels, with rows and columns defined by combinations of two categorical variables (even if some combinations of faceting values do not exist in data). This is most useful when you want to facet by a single variable (or two)
+
+carsplot_facet <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_wrap(~ am)
+
+#2. facet_grid() forms a matrix of panels defined by row and column faceting variables, creating panels based on observed combinations of values in faceting variables
+
+#facet_grid(.~variable) will return facets equal to the levels of variable distributed horizontally
+#facet_grid(variable~.) will return facets equal to the levels of variable distributed vertically.
+
+carsplot_facet_2 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(vs ~ am)
+
+carsplot_facet_3 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(am ~ .)
+
+carsplot_facet_4 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(. ~ am)
+```
+
+
+What are other types of common geoms?
+
+geom_histogram(): plots a histogram of single value; usually needs modification to number of bins.
+
+geom_density(): density plot of single variable.
+
+geom_bar(): vertical barplot by categorical variable
+
+geom_point(): typical two-way scatterplot
+
+geom_smooth(): simple line interpolator
+
+
+
+# Part 3: Practice
+## Tidyverse practice
+
+Use the data below to first split the complete dataset into individual planes and then summarise each plane 
+by counting the number of flights (count = n()) and computing the mean distance flown.
+
+Next, determine what city is flown to the most often from NYC.
+
+Finally, create a plot to create a barplot visualizing if flights are on time or delayed (defined as later than 5 minutes) by month. Additionally, ensure your plot has meaningful labels.
+
+```{r}
+#First, we need to install our data. This dataset includes airline on-time data for all flights departing NYC in 2013. 
+#install.packages("nycflights13")
+
+library(nycflights13)
+
+data("flights")
+dplyr::as_tibble(flights)
+
+
+```
+
+
+```{r}
+by_tailnum <- ___(___, tailnum) %>% 
+  summarise(count = n(), dist = ___)
+
+```
+
+
+```{r}
+#What city is flown to the most often from NYC?
+
+destinations <- ___(flights, dest) %>%
+  ___(planes = n_distinct(tailnum),
+            flights = n())%>%
+  arrange(desc(flights))
+
+#calling to view top 10 
+d1<-___(destinations,___)
+
+
+```
+
+
+```{r}
+#Barplot
+flight_delays<-flights %>% 
+  mutate(dep_type = ___(dep_delay < 5, "on time", "delayed")) %>% 
+   ___(dep_type,month) %>%
+    ___(n = n()) %>% 
+    filter(dep_type!="")
+
+plot1<-ggplot(data=___) +
+
+
+```
