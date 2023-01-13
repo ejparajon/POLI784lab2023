@@ -1,11 +1,13 @@
 ---
-title: "Lab 4: Graphical interpretation of LMs"
+title: 'Lab 4: Graphical interpretation of LMs'
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE, include = TRUE)
+knitr::opts_chunk$set(cache = TRUE, include = TRUE, echo=TRUE, eval=FALSE)
 
 #Clear workspace
 rm(list=ls())
@@ -42,7 +44,8 @@ setwd()
 
 ```
 
-#Part 1: Ggplot visualizations
+# Part 1: Ggplot visualizations
+
 Lets begin by returning to the mtcars data set and creating a basic scatterplot of displacement (disp) vs mpg.
 
 ```{r, message=FALSE, warning=FALSE}
@@ -54,7 +57,7 @@ carsplot <- ggplot(data = mtcars, aes(x = ____, y = ____)) +
 
 ```
 
-Okay great, but what if we wanted to plot the linear relationship between our x and y?
++ Okay great, but what if we wanted to plot the linear relationship between our x and y?
 
 ```{r}
 carsplot + geom_smooth(method = "lm", se = FALSE, 
@@ -65,7 +68,7 @@ carsplot + geom_smooth(method = "lm", se = FALSE,
 #Also, note that we just added a layer over carsplot - did we change the carsplot object itself?
 ```
 
-Right now, we're using color as the aesthetic mapped to a specific explanatory variable (color represents the number of cylinders). We can play around with this: 
++ Right now, we're using color as the aesthetic mapped to a specific explanatory variable (color represents the number of cylinders). We can play around with this: 
 
 ```{r}
 ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
@@ -81,22 +84,21 @@ ggplot(data=mtcars, aes(x = disp, y = mpg)) +
   theme_bw()
 ```
 
-What are the benefits/drawbacks of each of these strategies? Think about how well the plot communicates information about the types of variables plotted as well as the relationship between them.
++ What are the benefits/drawbacks of each of these strategies? Think about how well the plot communicates information about the types of variables plotted as well as the relationship between them.
 
-The above are great places to start out visualizing any potential relationships between your variables.
++ The above are great places to start out visualizing any potential relationships between your variables.
 
-Now let's jump back into the palmerpenguins dataset to perform some more in-depth visualization of regression models.
+2. Now let's jump back into the palmerpenguins dataset to perform some more in-depth visualization of regression models.
+
++ Here we will evaluate the association between penguin body mass (measured in grams) and flipper length (measured in mm).
+
++ Let's suppose our main research question is to determine whether body mass was associated with flipper length We will set the body mass as our dependent variable and flipper length as our independent variable (or predictor of interest):
 
 
-Here we will evaluate the association between penguin body mass (measured in grams) and flipper length (measured in mm).
-
-Let's suppose our main research question is to determine whether body mass was associated with flipper length We will set the body mass as our dependent variable and flipper length as our independent variable (or predictor of interest).
+<div align="left">$\large E[Body\_mass_{i} | Flipper\_length_{i}] = \beta_0 + \beta_1  Flipper\_length_{i} + \epsilon,$</div>
 
 
-<div align="left">$\large E[Body_mass_{i} | Flipper_length_{i}] = \beta_0 + \beta_1  Flipper_length_{i} + \epsilon,$</div>
-
-where $E[Body_mass_{i} |  Flipper_length_{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$. 
-
++ where $E[Body\_mass_{i} |  Flipper\_length_{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$. 
 
 ```{r}
 #We could start by plotting the association between the penguin's body mass and flipper length
@@ -113,7 +115,7 @@ mass_flipper <- ggplot(data = penguins,
 
 ```
 
-Now, we can construct a linear regression model with body mass as the dependent variable and flipper length. as the independent variable (or predictor of interest).
++ Now, we can construct a linear regression model with body mass as the dependent variable and flipper length. as the independent variable (or predictor of interest).
 
 
 ```{r}
@@ -139,7 +141,7 @@ Penguin_results <- ggplot(data=temp_lm, aes(x=term, y=estimate)) +
 #Okay great so there's an effect! But what about confounders? Perhaps the penguins species is also important.
 
 ```
-Lets again plot it but this time break out the results by species.
++ Lets again plot it but this time break out the results by species.
 
 ```{r}
 mass_flipper_species <- ggplot(data = penguins, 
@@ -162,7 +164,7 @@ mass_flipper_species <- ggplot(data = penguins,
 Now our model looks like this.
 <div align="left">$\large E[Body\_mass_{i} | Flipper\_length_{i}], Species_{i}] = \beta_0 + \beta_1  Flipper\_length_{i}+ \beta_2  Species_{i} + \epsilon$</div>
 
-where $E[Body\_mass_{i} |  Flipper\_length_{i}], Species{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$ and controlling for species of the penguin $i$.
++ where $E[Body\_mass_{i} |  Flipper\_length_{i}], Species{i}]$ denotes the expected body mass for penguin $i$ given the flipper length of penguin $i$ and controlling for species of the penguin $i$.
 
 ```{r}
 linear.model2 <- lm(body_mass_g ~ flipper_length_mm+species, data = penguins)
@@ -186,7 +188,7 @@ Penguin_results_2 <- ggplot(data=temp_lm_2, aes(x=term, y=estimate)) +
 
 ```
 
-Okay great, but what if we want to visualize substantive effects? For this we can use our old friend predict()!
++ Okay great, but what if we want to visualize substantive effects? For this we can use our old friend predict()!
 
 ```{r}
 
@@ -205,27 +207,25 @@ subeffects_plot <- ggplot(int_dat, aes(x=flipper_length_mm, y=fit, ymin=lwr, yma
        x = "Flipper length (mm)",
        y = "Body mass (g)",
        color = "Penguin species",
-       shape = "Penguin species")
-subeffects_plot+
+       shape = "Penguin species")+
   plot_theme
 
 
 ```
 
 ## Interaction analysis
-Additionally, in other models we may be interested in exploring the interaction between variables. Often these interaction effects are difficult to interpret without graphic aids. 
++ Additionally, in other models we may be interested in exploring the interaction between variables. Often these interaction effects are difficult to interpret without graphic aids. 
 
-In this example, suppose we are interested in knowing if the effect of body mass on bill length is attenuated by the sex of the penguin. We begin by plotting the data and then perform interaction analysis.
++ In this example, suppose we are interested in knowing if the effect of body mass on bill length is attenuated by the sex of the penguin. We begin by plotting the data and then perform interaction analysis.
 
-Our regression equation looks like this:
++ Our regression equation looks like this:
 
 $body\_mass = B0 + B1*bill\_length + B2*sex + B3*bill\_length*sex+ \epsilon$
 
 ```{r}
 #First let's plot the raw data to see if there's anything there.
-penguins %>% 
-  # drop rows with missing data
-  drop_na(sex) %>% 
+penguins %>%  
+  drop_na(sex) %>%  # drop rows with missing data
   ggplot(aes(x = body_mass_g, y = bill_length_mm, color = sex)) +
   geom_point() +
   facet_wrap(~ sex)
@@ -270,8 +270,11 @@ ggplot(data = y_hat, aes(x = x, y = predicted, fill = sex)) +
 
 ```
 
-#Part 3: LM practice
-Use the msleep dataset to model how body weight (bodywt) and brain weight (brainwt) influences total REM sleep (sleep_rem). Then create a model including an additional predictor (of your choice). Create a coefficient plot of the results of the two models and compare them.
+# Part 3: **Exercise** LM practice
+
+1.  Use the msleep dataset to model how body weight (bodywt) and brain weight (brainwt) influences total REM sleep (sleep_rem). 
+2.  Then create a model including an additional predictor (of your choice). 
+3. Create a coefficient plot of the results of the two models and compare them.
 
 ```{r}
 glimpse(msleep)
@@ -298,7 +301,7 @@ sleep_results <- bind_rows(model1_tidy, model2_tidy)
 sleep_results_plot <- ggplot(_____)
 
 
-#Interpret 
+#Interpret the graph
 ```
 
 
