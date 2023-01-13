@@ -1,14 +1,17 @@
 ---
-title: "Lab 3: The Linear Model in R"
+title: 'Lab 3: The Linear Model in R'
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
 Adapted  from code and text from Isabel Laterzo, Simon Hoellerbauer and Chelsea Estancona.
 
 This lab will introduce you to `lm()`, the function we will be using to fit linear models (for now) in \texttt{R}. I will walk you through the different parts of this lab, but then we will largely be working independently. Chime in whenever you have questions!
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE, include = TRUE, eval=FALSE)
+knitr::opts_chunk$set(cache = TRUE, include = TRUE, echo=TRUE, eval=FALSE)
 
 #Clear workspace
 rm(list=ls())
@@ -17,7 +20,7 @@ rm(list=ls())
 #install.packages("pacman")
 
 #Installing and loading packages for use
-pacman::p_load(xtable,stargazer,palmerpenguins,tidyverse)
+pacman::p_load(xtable,stargazer,palmerpenguins,tidyverse,texreg)
 
 ```
 
@@ -31,15 +34,15 @@ setwd()
 
 # Part 1: LM in R
 
-First, we'll simulate some data to use. This will be a very useful skill in the future, so pay attention to what we do here.
++ First, we'll simulate some data to use. This will be a very useful skill in the future, so pay attention to what we do here.
 
-We first create our variables and then stipulate what our effects should be. 
++ We first create our variables and then stipulate what our effects should be. 
 
-Let's set our seed to 123.
++ Let's set our seed to 123.
 
-For our $\mathbf{x}_1$ variable, let's take 20 draws from a $\mathcal{N}(1.3, 2.3)$ (using the `R` parameterization, where the second parameter is the standard deviation).
++ For our $\mathbf{x}_1$ variable, let's take 20 draws from a $\mathcal{N}(1.3, 2.3)$ (using the `R` parameterization, where the second parameter is the standard deviation).
 
-Let's set $\beta_0$ to be 17, and $\beta_1$ to be 1.3. We also can't forget to simulate $\boldsymbol{\epsilon}$! Let's $\boldsymbol{\epsilon} \sim \mathcal{N}(0, 3.4)$.
++ Let's set $\beta_0$ to be 17, and $\beta_1$ to be 1.3. We also can't forget to simulate $\boldsymbol{\epsilon}$! Let's $\boldsymbol{\epsilon} \sim \mathcal{N}(0, 3.4)$.
 
 ```{r, eval = FALSE}
 set.seed(123)  
@@ -58,21 +61,21 @@ error <- rnorm(length(x1), 0, sigma) #Let's simulate some random error, too.
 
 ```
 
-What would we do in order to simulate a linear relationship with the variables and effects above? Create the outcome variable `y`.
++ What would we do in order to simulate a linear relationship with the variables and effects above? Create the outcome variable `y`.
 ```{r, eval = FALSE}
 y <- _____________________
 ```
 
-What do $\mathbf{x}_1$ and $\mathbf{y}$ look like together? Use the `plot` function to plot a scatter plot of $\mathbf{x}_1$ against $\mathbf{y}$.
++ What do $\mathbf{x}_1$ and $\mathbf{y}$ look like together? Use the `plot` function to plot a scatter plot of $\mathbf{x}_1$ against $\mathbf{y}$.
 
 ```{r, eval = FALSE}
 plot(x1, y)
 ```
 
-Now that we have simulated explanatory variables and set up a 'true' relationship between our explanatory variable (x1) and outcome variable, we can use R's built-in functions to evaluate our linear model. For a linear model, we will want to use the `lm()` function. 
++ Now that we have simulated explanatory variables and set up a 'true' relationship between our explanatory variable (x1) and outcome variable, we can use R's built-in functions to evaluate our linear model. For a linear model, we will want to use the `lm()` function. 
 The basic syntax for this function is `lm(Y ~ X1 + X2)`. 
 
-Use `summary()` on the model object (`m1` in this case) in order to see some of the most interesting information about the fitted model.
++ Use `summary()` on the model object (`m1` in this case) in order to see some of the most interesting information about the fitted model.
 
 ```{r, eval = FALSE}
 m1 <- lm(___________) #the basic syntax here: lm(Y ~ X1 + X2)
@@ -84,9 +87,9 @@ summary(m1)
 
 # Part 2: Combining LM and the tidyverse
 
-We can also combine what we learned about using the tidyverse with linear modeling!
++ We can also combine what we learned about using the tidyverse with linear modeling!
 
-As we dive into learning linear models in `R`, we're going to use some data from the `mtcars`. But first, lets use the `tidyverse` to clean it up a bit. First, take a look at the mtcars data (its readily available so you don't really need to load it in!).
++ As we dive into learning linear models in `R`, we're going to use some data from the `mtcars`. But first, lets use the `tidyverse` to clean it up a bit. First, take a look at the mtcars data (its readily available so you don't really need to load it in!).
 
 ```{r}
 library(tidyverse)
@@ -94,9 +97,9 @@ library(tidyverse)
 summary(mtcars)
 ```
 
-Great. Let's say we want to analyze the role that `disp` and `cyl` play in influencing `mpg`. However, we're only interested in observations where `cyl` is greater than 4. Let's use `dplyr` and the `tidyverse` to only keep observations where `cyl` is greater than 4. Then, only keep the three above variables in the new data set. Label this data set `new_data`. 
++ Great. Let's say we want to analyze the role that `disp` and `cyl` play in influencing `mpg`. However, we're only interested in observations where `cyl` is greater than 4. Let's use `dplyr` and the `tidyverse` to only keep observations where `cyl` is greater than 4. Then, only keep the three above variables in the new data set. Label this data set `new_data`. 
 
-Hint: the `dplyr` functions you are interested in here are `filter()` and `select()` - don't forget to call their help files if you need more information (e.g., `?filter()` in your console).
++ Hint: the `dplyr` functions you are interested in here are `filter()` and `select()` - don't forget to call their help files if you need more information (e.g., `?filter()` in your console).
 ```{r, eval = FALSE}
 
 new_data <- mtcars %>%
@@ -105,9 +108,9 @@ new_data <- mtcars %>%
 ```
 
 
-Now that we have our data ready, we can use `lm()`.  Fill in the blank in the chunk below where Y is `mpg`, X1 is `cyl`, and X2 is `disp`. Use `summary()` on the model object (`m2` in this case) in order to see some of the most interesting information about the fitted model.
++ Now that we have our data ready, we can use `lm()`.  Fill in the blank in the chunk below where Y is `mpg`, X1 is `cyl`, and X2 is `disp`. Use `summary()` on the model object (`m2` in this case) in order to see some of the most interesting information about the fitted model.
 
-Remember, our data is `new_data`. 
++ Remember, our data is called `new_data`. 
 
 ```{r, eval = FALSE}
 #model
@@ -118,7 +121,7 @@ summary(___)
 
 ```
 
-The `summary` function provides lots of valuable information about the model we've created. We can also extract different information if we need, for example, just the coefficients, or just the residuals. Use `View()` on `m2`. What does it look like `m2` is? What do you think we could do if we wanted to access the different objects within `m2`?
++ The `summary` function provides lots of valuable information about the model we've created. We can also extract different information if we need, for example, just the coefficients, or just the residuals. Use `View()` on `m2`. What does it look like `m2` is? What do you think we could do if we wanted to access the different objects within `m2`?
 
 ```{r, eval=FALSE, echo=TRUE}
 #Taking a look at m1
@@ -134,21 +137,21 @@ m2$______
 m2$_______
 ```
 
-We can also use indexing to get to parts of these vectors - the output from a model is a list object, which means we can use brackets with $ indexing.
++ We can also use indexing to get to parts of these vectors - the output from a model is a list object, which means we can use brackets with $ indexing.
 
 ```{r, eval = FALSE}
 m2$coefficients[1] #What does this give us?
 m2[2] #What about this?
 ```
 
-What if we wanted to include an interaction term? Try interacting `disp` and `cyl`. 
++ What if we wanted to include an interaction term? Try interacting `disp` and `cyl`. 
 ```{r, eval = FALSE}
 m3 <- lm(mp ~ disp + cyl + _______, data=new_data) #use * for interaction- include both variables 
 
 summary(m3)
 ```
 
-We don't actually have to write all of the variables two times; the `lm` function will include the variables involved in the interaction even if we don't specify them individually in the formula. Try this out below, creating model object `m4` and compare it to `m3`.
++ We don't actually have to write all of the variables two times; the `lm` function will include the variables involved in the interaction even if we don't specify them individually in the formula. Try this out below, creating model object `m4` and compare it to `m3`.
 ```{r, eval = FALSE}
 #m4:
 m4<-lm(_________)
@@ -156,11 +159,12 @@ m4<-lm(_________)
 ```
 
 
-How might we present these results in a table? Both `xtable()` and `stargazer()` are functions that produce LaTeX code that could be copy-pasted into a .tex document or included in an Rmarkdown document. Try both of these on one of the model object `m4` we created above and see what happens. Note, these are VERY flexible and can be customized to make very nice tables, the ones we are generating here are just basic. 
++ How might we present these results in a table? Both `xtable()`, `stargazer()`, and `texreg()` are packages that produce LaTeX code that could be copy-pasted into a .tex document or included in an Rmarkdown document. Try these on one of the model object `m4` we created above and see what happens. Note, these are VERY flexible and can be customized to make very nice tables, the ones we are generating here are just basic. 
 ```{r, eval=FALSE, echo=TRUE}
 #These produce code for a .pdf that we can copy and paste
 xtable(______)
 stargazer(_______)
+texreg(_______)
 
 #you can also add lots of useful information onto these
 #check out guides online!
@@ -168,9 +172,9 @@ stargazer(_______)
 
 ```
 
-When presenting our results, we might be largely concerned with prediction: if I have a model and provide it with 'new' data, what should I expect? How confident are we in that expectation? We can use the handy `predict()` function here, which works with almost any type of model object. 
+2. When presenting our results, we might be largely concerned with prediction: if I have a model and provide it with 'new' data, what should I expect? How confident are we in that expectation? We can use the handy `predict()` function here, which works with almost any type of model object. 
 
-Check out `predict.lm` using ?, as that is the method that `predict` invokes when we feed it an lm object. 
++ Check out `predict.lm` using ?, as that is the method that `predict` invokes when we feed it an lm object. 
 
 ```{r}
 #fitting our model
@@ -232,7 +236,7 @@ ggplot(data=plot_dat_n) +
   theme_bw()
 ```
 
-Note that when using predict, it is very important that our new observations have variables that bear the same name as in the formula. Otherwise `predict` won't know what to do! Try out the following:
++ Note that when using predict, it is very important that our new observations have variables that bear the same name as in the formula. Otherwise `predict` won't know what to do! Try out the following:
 ```{r, eval = FALSE}
 #recreating new_dat_n_1
 new_dat_n_1_a <- with(mtcars, data.frame(x_vec_n, 4)) 
@@ -260,8 +264,9 @@ all(fit_n_1 == fit_n_1_a) #what does all() do here?
 
 ```
 
-# Part 3: LM practice
-Using the palmerpenguines dataset, create an OLS model using multiple predictors and then display the results in a publication quality table (using stargazer).
+# Part 3 Exercise: LM practice
+
++ Using the palmerpenguines dataset, create a linear model model using multiple predictors of your choice and then display the results in a publication quality table (using stargazer).
 ```{r}
 library(palmerpenguins)
 library(stargazer)
@@ -274,8 +279,6 @@ library(stargazer)
 model1<-lm(______,data=penguins)
 
 
-
-#Create table
-
+#Create nicely formatted table
 stargazer(____)
 ```
