@@ -304,17 +304,18 @@ ggplot(plotdat, aes(x = tax, y = pe, ymin = lo, ymax = hi, color = Approach,
   theme_bw()
 ```
 
-# Assignment
+# Exercise
 
-Read in the data 'turnout.csv.' Fit a logit model that predicts voting based on race, education and income. 
++ Read in the data 'turnout.csv.' Fit a logit model that predicts voting based on race, education and income. 
 
-Now, fit a second model that predicts voting based on race, education, income, and age. Assume that you've hypothesized that age has a curvilinear relationship with voting turnout, such that lower ages and higher ages are less likely to vote. Include this transformed variable.
++ Now, fit a second model that predicts voting based on race, education, income, and age. Assume that you've hypothesized that age has a curvilinear relationship with voting turnout, such that lower ages and higher ages are less likely to vote. Include this transformed variable.
 
-Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
++ Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
 
-Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
++ Average-Case Approach: Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
 
-Generate an average predicted effect over the observed values of income for the first model. Plot this.
++ Observed-Case Approach: Generate an average predicted effect over the observed values of income for the first model. Plot this too.
+
 
 Required packages and data:
 ```{r, message=FALSE}

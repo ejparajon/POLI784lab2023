@@ -204,6 +204,8 @@ plot_data <- t(apply(pc_dem_cl, 1, quantile, probs = c(.1, .5, .9))) %>% as.data
 plot_data$dem_cl <- dem_cl
 ```
 
+# Exercise
+
 To do on your own:
 
 Below, try using ggplot to plot this information we just generated. Follow these guidelines:

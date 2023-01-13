@@ -112,7 +112,8 @@ Let's take a look!
 ```{r, eval = FALSE}
 #Load in packages
 pacman::p_load(mice,
-               VIM) #Visualization
+               VIM,
+               texreg) #Visualization
 
 
 #mice's df visualization
@@ -133,7 +134,7 @@ summary(mice_data)
 
 
 #try this out with 25 iterations and 10 imputations
-#select animputation method (try pmm) - what does it do differently?
+#select an imputation method (try pmm) - what does it do differently?
 mice_data_2 <- mice(data_miss, #call our data
                   m=10, #number of multiple imputations
                   maxit=25, #number of iterations
@@ -142,7 +143,6 @@ mice_data_2 <- mice(data_miss, #call our data
 
 
 summary(mice_data_2)
-
 ```
 
 So this is great, but then what do we do if we want to run a model? We have five data sets. One option is to pool the data this way:
@@ -150,6 +150,10 @@ So this is great, but then what do we do if we want to run a model? We have five
 #pooling
 model_mice <- with(mice_data,lm(Temp~ Ozone + Solar.R + Wind))
 summary(pool(model_mice))
+
+
+#Using texreg package to display
+texreg(pool(model_mice))
 
 ```
 So mice is great. Let's also learn about Amelia II (my personal favorite, named after Amelia Earhart, because she is missing). Amelia is a little different because it assumes that your data is jointly distributed as multivariate normal. It uses the "expectation-maximization with bootstrapping" as an algorithm for imputation. The EM algorithm alternates between something called the expectation (E-step) and maximization (M-step) steps until it converges on values that were missing - it converges when the current and previous values are quite close (sounds a bit like Newton Raphson, no?). It brings in bootstraping by doing this process on multiple bootstrapped samples drawn from your original (and incomplete) data. 
@@ -161,7 +165,7 @@ Great, let's try it out. Examine the function by calling `?amelia()` - look at t
 pacman::p_load(Amelia,
                lubridate)
 
-#create running time variable, lets just assume we're in 2021
+#create running time variable, lets just assume we're in 2023
 data_miss$time <- make_datetime(month = data_miss$Month,
                                 day = data_miss$Day,
                                 year = 2023)
@@ -173,8 +177,7 @@ amelia_data <- amelia(x = data_miss,
 
 
 #let's run the model again, but this time using a for loop
-models_amelia <- list() #create with as many elements that you know exist
-#create a vector of type list of size five
+models_amelia <- vector("list", 5)  #vector for our 5 newly imputed data sets
 
 
 for(i in 1:5){
@@ -183,6 +186,9 @@ for(i in 1:5){
 }
 
 summary(pool(models_amelia))
+
+#Putting into table
+texreg(pool(models_amelia))
 
 ```
 
@@ -205,7 +211,7 @@ summary(pool(models_amelia))
 
 ```
 
-**On your own:**
+#Exercise **On your own:**
 
 Try Amelia again, but this time let's use more of its functionality. Read in data from the `africa` package and examine its missingness. Then, using Amelia, impute missing values. Not that the dataset is cross-sectional by country, time series by year, and should have the `gdp_pc` variable specified as logged.
 
@@ -230,6 +236,9 @@ for(i in 1:length(africa_imp$imputations)){
 }
 
 summary(pool(models_africa))
+
+#Putting into table
+texreg(pool(models_africa))
 
 
 #alternatively!

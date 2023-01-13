@@ -28,7 +28,7 @@ The following tests will help us see if these assumptions hold, and will examine
 
 # Simulation
 ```{r, message = FALSE}
-#clear global environ
+#clear global environment
 rm(list=ls())
 
 #the packages we will need
@@ -408,6 +408,22 @@ durbinWatsonTest(m1) #is this a problem?
 shapiro.test(m1$residuals) #how does it look?
 ```
 
+And last but not least, you can use the performance package (and the see package) to generate really nicely formatted regression assumption plots!
+```{r}
+pacman::p_load(see,
+               performance)
+
+#using the performance package to generate plots (zoom out if you get an error about plot size)
+check_model(m1)
+ 
+# performance package also has functions to help check assumptions
+check_normality(m1)
+?check_normality
+ 
+check_heteroskedasticity(m1)
+?check_heteroskedasticity
+
+```
 
 # Practice
 To do on your own:

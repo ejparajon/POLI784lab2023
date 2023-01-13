@@ -138,7 +138,7 @@ plot_grid(autoplot(root.pois) + ylims, autoplot(root.nb) + ylims,
 What does this tell us? The rootogram reflects fitted counts. If a bar doesn't reach the zero line, the model is overpredicting a certain count bin. If it exceeds the zero line, it underpredicts. So, neither of these models are perfect. BUT - the poisson model seems to both over and underpredict a lot. The negative binomial model on the other hand definitely over predicts, but not as much. 
 
 
-#Predicted Counts
+# Predicted Counts
 
 For the sake of illustration (and because we see it is a better fitting model), let's use the NB model to plot predicted counts, using simulation. 
 
@@ -173,8 +173,6 @@ quantile(pc_sims, prob= 0.975)
 ```
 
 
-
-
 How do we predict counts over the range of a variable? Like we always have! Let's say we want to know what happens to the predicted number of counts as the average number of democratic cliques varies from its min to its max.
 ```{r}
 temp_data <- count
@@ -198,6 +196,17 @@ pc_dem_cl <- purrr::map_dfr(dem_cl, function(x){
 plot_data <- t(apply(pc_dem_cl, 1, quantile, probs = c(.1, .5, .9))) %>% as.data.frame()
 plot_data$dem_cl <- dem_cl
 ```
+
+# Exercise
+
+To do on your own:
+
+Below, try using ggplot to plot this information we just generated. Follow these guidelines:
+- X axis: Average number of Democratic Cliques
+- Y axis: Predicted count of Intl. Wars
+- Include a geom_line() for Dem_Cliques
+- Include a geom_ribbon() with CIs (80% confidence interval)
+- Include a legend which specifies what the line is and what the CIs are, try putting that legend on the bottom
 
 
 ```{r}

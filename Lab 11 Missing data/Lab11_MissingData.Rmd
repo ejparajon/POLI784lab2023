@@ -114,16 +114,15 @@ Let's take a look!
 ```{r, eval = FALSE}
 #Load in packages
 pacman::p_load(mice,
-               VIM) #Visualization
+               VIM,
+               texreg) #Visualization and tables
 
 
 #mice's df visualization
 md.pattern(data_miss)
 
 #vis using aggr() from VIM
-aggr_plot <- aggr(data_miss, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE,
-                  labels=names(data_miss), cex.axis=.7, gap=3,
-                  ylab=c("Histogram of missing data","Pattern"))
+aggr_plot <- aggr(data_miss, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data_miss), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
 #what is this showing us?
 
 #MICE TIME
@@ -136,6 +135,8 @@ mice_data <- mice(data_miss, #call our data
 summary(mice_data)
 
 
+
+
 #try this out with 25 iterations and 10 imputations
 #select animputation method (try pmm) - what does it do differently?
 mice_data_2 <- mice(data_miss, #call our data
@@ -146,6 +147,7 @@ mice_data_2 <- mice(data_miss, #call our data
 
 
 summary(mice_data_2)
+
 ```
 
 So this is great, but then what do we do if we want to run a model? We have five data sets. One option is to pool the data this way:
@@ -153,6 +155,10 @@ So this is great, but then what do we do if we want to run a model? We have five
 #pooling
 model_mice <- with(mice_data,lm(Temp~ Ozone + Solar.R + Wind))
 summary(pool(model_mice))
+
+#Using texreg package to display results in a table
+texreg(pool(model_mice))
+
 ```
 So mice is great. Let's also learn about Amelia II (my personal favorite, named after Amelia Earhart, because she is missing). Amelia is a little different because it assumes that your data is jointly distributed as multivariate normal. It uses the "expectation-maximization with bootstrapping" as an algorithm for imputation. The EM algorithm alternates between something called the expectation (E-step) and maximization (M-step) steps until it converges on values that were missing - it converges when the current and previous values are quite close (sounds a bit like Newton Raphson, no?). It brings in bootstraping by doing this process on multiple bootstrapped samples drawn from your original (and incomplete) data. 
 
@@ -163,10 +169,9 @@ Great, let's try it out. Examine the function by calling `?amelia()` - look at t
 
 #Load in packages
 pacman::p_load(Amelia,
-               lubridate,
-               xtable)#For tables
+               lubridate)
 
-#create running time variable, lets just assume we're in 2021
+#create running time variable, lets just assume we're in 2023
 data_miss$time <- make_datetime(month = data_miss$Month,
                                 day = data_miss$Day,
                                 year = 2023)
@@ -188,11 +193,8 @@ for(i in 1:5){
 #Pooling models (using mice)
 summary(pool(models_amelia))
 
-#Pulling into DF
-pooled_df <- data.frame(summary(pool(models_amelia)))
-
-#Displaying in table
-xtable(pooled_df)
+#Putting into table
+texreg(pool(models_amelia))
 
 ```
 

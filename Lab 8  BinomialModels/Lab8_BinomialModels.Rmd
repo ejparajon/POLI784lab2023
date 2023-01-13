@@ -313,17 +313,17 @@ ggplot(plotdat, aes(x = tax, y = pe, ymin = lo, ymax = hi, color = Approach,
   theme_bw()
 ```
 
-# Assignment
+# Exercise
 
-Read in the data 'turnout.csv.' Fit a logit model that predicts voting based on race, education and income. 
++ Read in the data 'turnout.csv.' Fit a logit model that predicts voting based on race, education and income. 
 
-Now, fit a second model that predicts voting based on race, education, income, and age. Assume that you've hypothesized that age has a curvilinear relationship with voting turnout, such that lower ages and higher ages are less likely to vote. Include this transformed variable.
++ Now, fit a second model that predicts voting based on race, education, income, and age. Assume that you've hypothesized that age has a curvilinear relationship with voting turnout, such that lower ages and higher ages are less likely to vote. Include this transformed variable.
 
-Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
++ Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
 
-Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
++ Average-Case Approach: Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
 
-Generate an average predicted effect over the observed values of income for the first model. Plot this too.
++ Observed-Case Approach: Generate an average predicted effect over the observed values of income for the first model. Plot this too.
 
 ```{r}
 
@@ -347,7 +347,10 @@ BIC()
 AIC()
 BIC()
 
+#Which is better?
+
 # Average-Case Approach
+
 #When we combine the average-case approach with simulation, we create a hypothetical design matrix, where we hold all continuous variables at their mean or another justifiable value, and then let the predictor of interest vary along some range. 
 
 
@@ -369,6 +372,7 @@ ggplot()
 
 
 # Observed-Case Approach
+
 #When taking the observed-case approach (see Hanmer and Kalkan (2013) for why this is the preferable approach) and using simulation to get confidence intervals, we have to do things slightly differently. Specifically, we will have to take an addition mean.
 
 temporary <- model.matrix(m1)
@@ -415,10 +419,10 @@ plotdat <- data.frame(plotdat, ______)
 
 #We can then use these data to plot the mean predicted probability and our confidence bands.
 
-#
+
 colnames(______) <- c('pe', 'lo', 'hi', 'income')
 
-ggplot()
+ggplot(______)
 
 ```
 
