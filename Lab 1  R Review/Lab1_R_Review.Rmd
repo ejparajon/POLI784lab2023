@@ -2,21 +2,21 @@
 title: '784 Lab 1: R Refresher'
 author: "Eric Parajon"
 output:
-  pdf_document:
-    keep_tex: TRUE
   html_document:
     df_print: paged
+  pdf_document:
+    keep_tex: TRUE
 ---
 
 Code from today's lab was partially adapted from labs by Simon Hoellerbauer and Isabel Laterzo.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE, include = FALSE)
+knitr::opts_chunk$set(cache = TRUE, include = TRUE, echo=TRUE, eval=FALSE)
 ```
 
 Today's lab will help you refresh some of what you learned in R in 783. It will also introduce you to some topics in R that you may not be familiar with, but are very useful for this semester. 
 
-For a refresher on how to use R Markdown, please see this cheat sheet: https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf. 
+For a refresher on how to use R Markdown, please see this cheat sheet: https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
 
 Further see: https://posit.co/resources/cheatsheets/
 For a list of all R studio cheatsheets (super helpful!)
@@ -25,6 +25,7 @@ Within your code chunks, comment our your code describing what you are doing in 
 
 # R Review
 \medskip
+
 1. First, it is important to save the document you are using in a central folder. Then, set your working directory to that folder. It's also important to clear your environment before working in a new document.
 ```{r, include = TRUE, eval = FALSE}
 getwd() #what is your current working directory?
@@ -33,18 +34,20 @@ setwd(____) #in the parentheses, set the working directory to the folder where
 #you save this file. Realistically, this isn't super relevant now because
 #you're not reading in external data, but it's a good habit to get into!
 
-rm(list=ls()) #clear global environ
+rm(list=ls()) #clear global environment
 ```
 
 \bigskip
-2. First, create a vector of ten 5s using the function `rep()`. 
-Second, create a vector that counts from 1 to 10 - do this in two ways, one using `c()` and one using `seq()`. 
 
-Third, create a vector of length 10 filled with NAs. Finally, uses `cbind()` to bind theses four vectors together to create a 10 x 14 (10 rows, 4 columns) matrix. 
+2. To start, create a vector of ten 5s using the function `rep()`. 
 
-Remember, if you don't know how to use a function, type ? function name into your console to see the help file (e.g., `?seq()`).
++ Second, create a vector that counts from 1 to 10 - do this in two ways, one using `c()` and one using `seq()`. 
 
-Try binding the vectors together with `rbind()` instead. What happens?
++ Third, create a vector of length 10 filled with NAs. Finally, uses `cbind()` to bind theses four vectors together to create a 10 x 14 (10 rows, 4 columns) matrix. 
+
++ Remember, if you don't know how to use a function, type ? function name into your console to see the help file (e.g., `?seq()`).
+
++ Try binding the vectors together with `rbind()` instead. What happens?
 
 ```{r}
 vec1 <- rep(5, 10) #vector of ten 5s
@@ -62,15 +65,16 @@ all_vecs2 <- rbind(vec1, vec2, vec3, vec4) #bind vectors together using rbind
 
 ```
 \bigskip
+
 3. Set your seed to 425. Simulate 100 draws from a Normal distribution with mean 2 and standard deviation 4, assigning the result to an object. 
 
-What proportion of the draws is above 3.1 in our sample? Think about using the functions `sum()` and `length()` to solve this, although there are other ways as well.
++ What proportion of the draws is above 3.1 in our sample? Think about using the functions `sum()` and `length()` to solve this, although there are other ways as well.
 
-What is the expected proportion of draws above 3.1? Hint, look into the function `pnorm()`
++ What is the expected proportion of draws above 3.1? Hint, look into the function `pnorm()`
 
-Repeat this process, but this time take 10,000 draws from the same Normal distribution. How does our result compare with the expected proportion of draws above 3.1 now?
++ Repeat this process, but this time take 10,000 draws from the same Normal distribution. How does our result compare with the expected proportion of draws above 3.1 now?
 
-Thinking back to last semester, what did we just calculate using simulation?
++ Thinking back to last semester, what did we just calculate using simulation?
 
 ```{r}
 set.seed(425)
@@ -95,11 +99,12 @@ sum(draws2 > 3.1)/length(draws2)
 ```
 
 \bigskip
+
 4. Another important concept in R is a `for` loop. If you need a refresher on these, visit: https://www.r-bloggers.com/2015/12/how-to-write-the-first-for-loop-in-r/. 
 
-Using the 100 draws from the Normal distribution from Q3, create a new vector that is 1 when the vector of draws is greater than 3.1 and 0 when it is less than or equal to 3.1. First, do this using a `for` loop with an embedded `if` `else` sequence. What is the sum of this vector?
++ Using the 100 draws from the Normal distribution from Q3, create a new vector that is 1 when the vector of draws is greater than 3.1 and 0 when it is less than or equal to 3.1. First, do this using a `for` loop with an embedded `if` `else` sequence. What is the sum of this vector?
 
-In addition to loops, `ifelse()` is also an important function. Look at the documentation of this function and repeat the above activity using `ifelse()`.
++ In addition to loops, `ifelse()` is also an important function. Look at the documentation of this function and repeat the above activity using `ifelse()`.
 
 ```{r}
 
@@ -127,13 +132,16 @@ sum(draws_new2)
 ```
 
 \bigskip
+
 5. Practice: Load in the `swiss` dataset. A description for this data can be found here: https://stat.ethz.ch/R-manual/R-patched/library/datasets/html/swiss.html 
 
-How many variables does it have? How many observations?
++ How many variables does it have? 
 
-The variable `Catholic` is the \% of Catholic individuals, as opposed to Protestant in each province. First look at the summary of this variable. Then, create a new variable `Protestant` that is the percent of Protestant individuals in each province, just going with the assumption that all non-Catholics are Protestant here.
++ How many observations?
 
-What is the mean percentage of this new variable?
++ The variable `Catholic` is the \% of Catholic individuals, as opposed to Protestant in each province. First look at the summary of this variable. Then, create a new variable `Protestant` that is the percent of Protestant individuals in each province, just going with the assumption that all non-Catholics are Protestant here.
+
++ What is the mean percentage of this new variable?
 
 ```{r}
 #loading in swiss dataset
@@ -159,9 +167,10 @@ ____(swiss$Protestant)
 
 ```
 \bigskip
+
 6. Now, find out what type of object `swiss` is. Then, coerce `swiss` to a list by using `as.list()` and assign it to an objected named `swiss_list`. Look at the object with `View()` What happened? Use the `length()` function on `swiss`. What is the output? Why?
 
-Create a matrix filled with random values that has 4 rows and 2 columns. Use `length()` on this matrix. Why might this be? Use `?` to read the documentation for `length()`.
++ Create a matrix filled with random values that has 4 rows and 2 columns. Use `length()` on this matrix. Why might this be? Use `?` to read the documentation for `length()`.
 
 ```{r}
 
@@ -172,9 +181,10 @@ ____(swiss)
 ```
 
 \bigskip
+
 7. Continuing to use the original `swiss` data, use a for loop to calculate the median of each of the variables. Store the result in a *named* vector (i.e., provide a name to each of the values so they are not just a bunch of random numbers with no context!).
 
-Some useful functions here are `vector()`, `seq_along()`, and `names()`. Remember to use the help function `?` for further information about these functions.
++ Some useful functions here are `vector()`, `seq_along()`, and `names()`. Remember to use the help function `?` for further information about these functions.
 ```{r}
 
 #creating container for the loop
@@ -196,16 +206,17 @@ print(____)
 ```
 
 \bigskip
+
 8. Look into the three functions `apply()`, `sapply()`, and `lapply()`. What are the differences between these functions?
 
-Repeat 7, but this time use the three above functions. Using each of these functions, examine what type of object they produce. How are they different from using a `for` loop? How are they different from each other in terms of what they produce? A useful function for examining different object types is `class()`.
++ Repeat what you did in 7, but this time use the three above functions. Using each of these functions, examine what type of object they produce. How are they different from using a `for` loop? How are they different from each other in terms of what they produce? A useful function for examining different object types is `class()`.
 ```{r}
 #examine functions
 ?apply()
 ?sapply()
 ?lapply()
 
-#using apply (2 is required because apply needs an arguement to margin (2 indicates what?))
+#using apply (2 is required because apply needs an argument to margin (2 indicates what?))
 medians2 <- ____(swiss, 2, median)
 print(medians2)
 typeof(medians2)
@@ -221,15 +232,16 @@ typeof(medians2)
 ```
 
 \bigskip
+
 9. Now we will explore `ggplot2`, which is a great package for plotting data and results. You will probably grow to have a love/hate relationship with `ggplot2`. For help with this package, reference this cheat sheet: https://res.cloudinary.com/dyd911kmh/image/upload/v1666806657/Marketing/Blog/ggplot2_cheat_sheet.pdf.
 Here is another useful link to a variety of graphs created using ggplot2: 
 http://r-graph-gallery.com/
 
-Reminder, load a package using library().
++ Reminder, load a package using library().
 
-Using `ggplot`, create a scatterplot with the `swiss` dataset that plots `Education` against `Examination`. Add axes labels and a title. 
++ Using `ggplot`, create a scatterplot with the `swiss` dataset that plots `Education` against `Examination`. Add axes labels and a title. 
 
-Does it look like there might be a relationship between these two variables?
++ Does it look like there might be a relationship between these two variables?
 ```{r}
 library(____)
 
@@ -249,9 +261,10 @@ P1
 \newpage
 
 \bigskip
+
 10. It is also useful to be able to write your own functions in `R`. Sometimes, `R` doesn't have a function for exactly what you are looking for. Doing so is pretty straightforward. For a quick review, see:  https://swcarpentry.github.io/r-novice-inflammation/02-func-R/
 
-For example, if I wanted to write a function that evaluated the equation \[f(x, y) = xy \] I could write one of the following options:
++ For example, if I wanted to write a function that evaluated the equation \[f(x, y) = xy \] I could write one of the following options:
 
 ```{r, include = TRUE}
 #example 1
@@ -282,13 +295,13 @@ fun_ex2(3,4)
 ```
 
 
-Now your turn. Write a function that evaluates the following equation:
++ Now your turn. Write a function that evaluates the following equation:
 \[f(x, y, z) = x^2 + 3xy + \sin(z)
 \]
 
-Have this function takes a vector as its single argument (see example 1), made up of the three parameters ($x, y, z$). Evaluate the function at $x = 3/4, y = 13, z = 3.4$. 
++ Have this function takes a vector as its single argument (see example 1), made up of the three parameters ($x, y, z$). Evaluate the function at $x = 3/4, y = 13, z = 3.4$. 
 
-```{r, echo = FALSE}
+```{r}
 
 my_fun <- function(______){
   
@@ -312,12 +325,13 @@ my_fun(c(3/4, 13, ____))
 \newpage
 # Math Review:
 \bigskip
-11. Let's try out some linear algebra. Below are 2 vectors, a and b, and two matrices A and B. Use them for this section.
 
-Here is a link to a linear algebra cheat sheet in R (and other languages): 
+11. **Exercise**: Let's try out some linear algebra. Below are 2 vectors, a and b, and two matrices A and B. Use them for this section.
+
++ Here is a link to a linear algebra cheat sheet in R (and other languages): 
 https://github.com/scalanlp/breeze/wiki/Linear-Algebra-Cheat-Sheet
 
-```{r, include = TRUE}
+```{r}
 #a
 a <- c(4, -5, 4, 1)
 #b
@@ -331,16 +345,17 @@ B <- matrix(c(4:1, 8, 14, -2, 1), ncol = 2)
 ```
 
 
-What is the dot product of $\mathbf{a}$ and $\mathbf{b}$? 
-Does the result change if we take the dot product of $\mathbf{b}$ and $\mathbf{a}$? 
+1. What is the dot product of $\mathbf{a}$ and $\mathbf{b}$? 
 
-What are the dimensions for the matrix $\mathbf{A}\mathbf{B}$? Is this new matrix invertible?  
+2. Does the result change if we take the dot product of $\mathbf{b}$ and $\mathbf{a}$? 
 
-What are the eigenvectors(vector whose direction remains unchanged when a linear transformation is applied to it) and eigenvalues (scalars associated with a linear system of equations) of this new matrix? 
+3. What are the dimensions for the matrix $\mathbf{A}\mathbf{B}$? Is this new matrix invertible?  
 
-Verify that the values produced are actually eigenvalues. 
+4. What are the eigenvectors and eigenvalues of this new matrix? 
 
-```{r, echo = FALSE}
+6. Verify that the values produced are actually eigenvalues. 
+
+```{r}
 #dot product
 a %*% b
 ___ %*% a
