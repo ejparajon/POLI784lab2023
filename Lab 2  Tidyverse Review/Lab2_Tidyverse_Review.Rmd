@@ -2,18 +2,19 @@
 title: '784 Lab 2: Review of Tidyverse and ggplot'
 author: "Eric Parajon"
 output:
-  pdf_document:
-    keep_tex: TRUE
   html_document:
     df_print: paged
+  pdf_document:
+    keep_tex: TRUE
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE, include = FALSE)
+knitr::opts_chunk$set(cache = TRUE, include = TRUE, echo=TRUE, eval=FALSE)
 ```
 
 # Tidyverse Review
 \medskip
+
 1. Again, it is important to save the document you are using in a central folder. Then, set your working directory to that folder. It's also important to clear your environment before working in a new document.
 ```{r, include = TRUE, eval = FALSE}
 getwd() #what is your current working directory?
@@ -31,14 +32,13 @@ rm(list=ls()) #clear global environment
 #Installing and loading packages for use
 pacman::p_load(tidyverse,ggthemes,nycflights13)
 
-
 ```
 
-2.The tidyverse allows us to use the piping operator `%>%`, which is a useful piece of code (base R can do this too with |>) . 
+2. The tidyverse allows us to use the piping operator `%>%`, which is a useful piece of code (base R can do this too with |>) . 
 
-It pipes an object (either by itself or created by another function) into the next function in the sequence, as the first argument. This makes the code much easier to read. 
++ It pipes an object (either by itself or created by another function) into the next function in the sequence, as the first argument. This makes the code much easier to read. 
 
-For example, we could calculate the standard deviation of the `mpg` variable in the `mtcars` dataset in the following ways:
++ For example, we could calculate the standard deviation of the `mpg` variable in the `mtcars` dataset in the following ways:
 
 
 ```{r, include = TRUE, echo = TRUE}
@@ -53,26 +53,21 @@ mtcars$mpg %>%
 
 #Does it return the same value?
 ```
-That is a very simple example, of course, and using a pipe in this case does not really gain you much. However, pipes and the myriad of tools in the `tidyverse` can make our work much, much easier. The [`dplyr`](https://dplyr.tidyverse.org/) package in the `tidyverse` allows us to manipulate data much more easily than in base R. 
++ That is a very simple example, of course, and using a pipe in this case does not really gain you much. However, pipes and the myriad of tools in the `tidyverse` can make our work much, much easier. The [`dplyr`](https://dplyr.tidyverse.org/) package in the `tidyverse` allows us to manipulate data much more easily than in base R. 
 
-`dplyr` allows us to manipulate our data in a structured way. The key functions are `mutate()`, which creates new variables, `select()`, which allows us to pick variable by characteristics of their names, `filter()`, which allows us to choose rows according to criteria we define, `summarise()`, which allows us to "reduce multiple values down to a single summary", and `arrange()`, which allows us to order the observations according values of 1 or more variables.
++ `dplyr` allows us to manipulate our data in a structured way. The key functions are `mutate()`, which creates new variables, `select()`, which allows us to pick variable by characteristics of their names, `filter()`, which allows us to choose rows according to criteria we define, `summarise()`, which allows us to "reduce multiple values down to a single summary", and `arrange()`, which allows us to order the observations according values of 1 or more variables.
 
-RStudio makes useful cheat sheets for their packages, including [`dplyr`](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf).
++ RStudio makes useful cheat sheets for their packages, including [`dplyr`](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf).
 
 
 ### Star Wars example
 
++ Next, we'll use dplyr to conduct some data manipulation!
++ We start by making our data into a tibble. Tibbles have some valuable characteristics and are an evolution of data.frames. Tibbles do not match partial variable names, do not convert character vectors to factors, always returns a tibble when [ is used and allows readable variable names.
 ```{r}
 #1. Star Wars example
 data(starwars)
   #Let's make our data into a tibble
-
-#Tibbles are evolution of data.frame
-#Inherits nominally, but not strictly!
-  #Does not match partial variable names
-  #Does not convert character vectors to factors
-  #Always returns a tibble when [ is used
-  #Allows readable variable names
 
 dplyr::as_tibble(starwars)
 
@@ -105,7 +100,7 @@ d1<-select(starwars, name, species, mass,height,gender,films)
 
 d1 %>%
   group_by(species) %>%
-  summarise(avg = mean(mass, na.rm=TRUE)) %>%
+  summarise(avg = mean(____, na.rm=TRUE)) %>%
   arrange(desc(avg))
 #Hutts are the heaviest!
 
@@ -121,60 +116,105 @@ Star_BMI<-d1 %>%
 #Now what if we only want to BMI of Humans characters?
 
 Human_BMI<-Star_BMI %>% 
-  filter(species=="Human") 
+  filter(____) 
 
 #What if we wanted to create a new variable that combined a characters name with where they were born?
 #This is easy using tidyr (another package in tidyverse suite)
 starwars %>%
-  unite(name_homeworld, name, homeworld) %>% 
+  unite(name_homeworld, ____) %>% 
   select(name_homeworld)
+
+```
+
+## Functions
+
++ It is also straightforward to write your own functions using tidyverse principles.
+Below is an example of a function I use quite often that pipes various operators together to summarize data.
+
++ You may also notice that the functions use ... (aka dots). The dots operator allows you to pass an arbitrary number of additional arguments that aren't explicitly defined in the function (for example, additional arguments to functions nested within the function).
+
++ The single dot (.) refers to whatever is on the left hand side of the pipe at that moment.
+```{r}
+#Creating a function to easily summarize data
+pctgroup <- function(data,...,rd = 1) {
+  dplyr::select(data,...) %>%
+    dplyr::filter(complete.cases(.)) %>% #drop any missing data in this case the . is referring to the dataframe
+    dplyr::group_by(...) %>% #group by
+    dplyr::summarise(n = n()) %>% #summarize the data
+    dplyr::mutate(Percentage = round(100*n/sum(n),rd)) #create a new column Percentage
+}
+
+#Application 
+pctgroup(diamonds, cut) %>% 
+  head(5)
+
+#Creating a function to first group by then calculate mean of a given variable x
+#enquo() and enquos() are defuse function arguments that are useful when writing nested functions like this.
+
+#!! is a bang bang operator it is useful to modify a piece of R code before R evaluates it. In this case the code line is being told that we are using an encoded variable (mean_col) in the summarise. 
+
+grouped_means <- function(df, x, ...){
+  mean_col <- enquo(x)
+  df %>% 
+    group_by(...) %>% 
+    summarise(mean = mean(!! mean_col))
+}
+
+#Grouping by cut, and color then calculating the mean price
+grouped_means(diamonds, price, cut, color) %>% 
+  head(5)
+
 
 ```
 ## Joins
 
++ Often you may wish to join two datasets together. 
+
 ```{r}
+library(nycflights13)
 
 # Load data 1
-(dates <- read_csv("https://bit.ly/DM22_dates"))
+(band_members)
 
 # Load data 2
-(works <- read_csv("https://bit.ly/DM22_works"))
+(band_instruments)
 
-
-#Inner join
-#With an inner_join(x, y), only observations that appear in both x and y datasets are returned
-
+```
++ Inner join 
+With an inner_join(x, y), only observations that appear in both x and y datasets are returned
+```{r}
 # Do inner join
-dates_works <- inner_join(dates, works) 
-(dates_works)
+members_instruments <- inner_join(band_members, band_instruments) 
+(members_instruments)
 
-
-#Left & Right Join
-#A left_join(x, y) call returns all observations in x, and drops observations that only appear in y
-#Variables in y that do not exist in x are appended to x in the returned tibble.
-
-#The same is true for a right_join(x, y), but with the roles of x and y reversed.
-
-dates_someworks <- left_join(dates, works) 
-(dates_someworks)
-
-
-dates_allworks <- right_join(dates, works) 
-print(dates_allworks, width=70)
-
-
-#Full join
-#Finally, a full_join(x, y) returns all observations and all variables in either in x or in y (filled with NAs)
-
-
-alldates_allworks <- full_join(dates, works) 
-print(alldates_allworks, width=70)
 
 ```
 
++ Left & Right Join
++ A left_join(x, y) call returns all observations in x, and drops observations that only appear in y. Variables in y that do not exist in x are appended to x in the returned tibble.
+
++ The same is true for a right_join(x, y), but with the roles of x and y reversed.
+
+```{r}
+members_someinstruments <- left_join(band_members, band_instruments) 
+(members_someinstruments)
+
+
+members_allinstruments <- right_join(band_members, band_instruments) 
+(members_allinstruments)
+
+```
++ Full join
++ Finally, a full_join(x, y) returns all observations and all variables in either in x or in y (filled with NAs)
+
+```{r}
+allmembers_allinstruments <- full_join(band_members, band_instruments) 
+(allmembers_allinstruments)
+```
+
 ## Pivoting
-Pivoting: Wide -> Long
-With pivot_longer(), you can take values of a variable that are stored as variable names pivot them onto the cells of a single (implicit) variable column
++ Pivoting: Wide -> Long
++ With pivot_longer(), you can take values of a variable that are stored as variable names pivot them onto the cells of a single (implicit) variable column
 
 
 ```{r}
@@ -194,9 +234,9 @@ relig_income_long<-relig_income %>%
 
 
 ```
-Pivoting: Long -> Wide
++ Pivoting: Long -> Wide
 
-With pivot_wider(), we move in the opposite direction: your units are distributed over multiple rows, so pivot until you have a single case per row of your tibble
++ With pivot_wider(), we move in the opposite direction: your units are distributed over multiple rows, so pivot until you have a single case per row of your tibble
 
 
 ```{r}
@@ -217,9 +257,9 @@ fish_encounters %>% pivot_wider(
 ```
 # Part 2: ggplot
 
-`ggplot` is very important, and requires some time and patience to get to know well. We won't have time to dive fully into it, but we will begin reviewing the following code so you become more familiar. R has its own built-in plot function, but ggplot is far more flexible and creates far more descriptive (and thus useful!) plots.
++ `ggplot` is very important, and requires some time and patience to get to know well. We won't have time to dive fully into it, but we will begin reviewing the following code so you become more familiar. R has its own built-in plot function, but ggplot is far more flexible and creates far more descriptive (and thus useful!) plots.
 
-For a comprehensive 'cheat sheet', see: https://www.maths.usyd.edu.au/u/UG/SM/STAT3022/r/current/Misc/data-visualization-2.1.pdf
++ For a comprehensive 'cheat sheet', see: https://www.maths.usyd.edu.au/u/UG/SM/STAT3022/r/current/Misc/data-visualization-2.1.pdf
 
 
 ```{r}
@@ -228,7 +268,7 @@ library(ggplot2)
 ```
 
 
-To begin, we can use the 'qplot' or 'ggplot' commands. I use ggplot. It's more customization.
++ To begin, we can use the 'qplot' or 'ggplot' commands. I use ggplot. It's more customization.
 
 ```{r}
 data(mtcars)
@@ -245,7 +285,7 @@ ggplot(data = mtcars, aes(x = disp, y = mpg)) + geom_point(aes(color = cyl))
 #hence why we use 'aes.' Plenty of examples below to dig into this more! 
 ```
 
-What are some ways we can make this plot clearer?
++ What are some ways we can make this plot clearer?
 
 ```{r}
 ggplot(data = mtcars, aes(x = disp, y = mpg)) + #we add 'layers' with +
@@ -256,7 +296,7 @@ ggplot(data = mtcars, aes(x = disp, y = mpg)) + #we add 'layers' with +
   theme_bw() #make the plot background blank w/grid lines
 ```
 
-You can also assign this plot to an object and save that object as a .pdf file.
++ You can also assign this plot to an object and save that object as a .pdf file.
 
 ```{r, message=FALSE, warning=FALSE}
 carsplot <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
@@ -277,9 +317,9 @@ carsplot <- ggplot(data = mtcars, aes(x = disp, y = mpg)) +
 ```
 
 ## Themes
-As you've hopefully seen ggplot is highly customization. One way to standardize your graphs and avoid repeating your code to control ancillary parameters (e.g. color palettes, axes labels, etc.) is to use a ggplot() theme that includes bundles of code. This is what we were doing using theme_bw() above. 
++ As you've hopefully seen ggplot is highly customization. One way to standardize your graphs and avoid repeating your code to control ancillary parameters (e.g. color palettes, axes labels, etc.) is to use a ggplot() theme that includes bundles of code. This is what we were doing using theme_bw() above. 
 
-You can also create custom themes yourself!
++ You can also create custom themes yourself!
 
 ```{r}
 #Here is a theme I use often
@@ -305,7 +345,7 @@ ggplot(data = mtcars, aes(x = disp, y = mpg)) +
   scale_colour_continuous(name = "Cylinders")+
   plot_theme #no () after the custom theme call
 ```
-As you can see there are tons of options that you can set yourself. Alternatively you can use existing gplot_themes. Here are some of the most popular
++ As you can see there are tons of options that you can set yourself. Alternatively you can use existing gplot_themes. Here are some of the most popular
 ```{r}
 #bw
 ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
@@ -357,10 +397,11 @@ ggplot(data = mtcars, aes(x = disp, y = mpg)) +
 
 ```
 ## Facets
-Using facets lets you create multi-panel plots based off a given variable.
-There are two different ggplot functions to use to facet. 
++ Using facets lets you create multi-panel plots based off a given variable. There are two different ggplot functions to use to facet. 
+
+1. facet_wrap() "wraps" a 1d ribbon of panels into 2d. Essentially, creating a square grid of panels, with rows and columns defined by combinations of two categorical variables (even if some combinations of faceting values do not exist in data). This is most useful when you want to facet by a single variable (or two)
+
 ```{r}
-#1. facet_wrap() "wraps" a 1d ribbon of panels into 2d. Essentially, creating a square grid of panels, with rows and columns defined by combinations of two categorical variables (even if some combinations of faceting values do not exist in data). This is most useful when you want to facet by a single variable (or two)
 
 carsplot_facet <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
   geom_point(aes(colour = cyl), size = 2) +
@@ -368,9 +409,11 @@ carsplot_facet <- ggplot(data = mtcars, aes(x = disp, y = mpg)) +
   scale_colour_continuous(name = "Cylinders")+
   theme_bw()+
   facet_wrap(~ am)
+```
 
-#2. facet_grid() forms a matrix of panels defined by row and column faceting variables, creating panels based on observed combinations of values in faceting variables
+2. facet_grid() forms a matrix of panels defined by row and column faceting variables, creating panels based on observed combinations of values in faceting variables.
 
+```{r}
 #facet_grid(.~variable) will return facets equal to the levels of variable distributed horizontally
 #facet_grid(variable~.) will return facets equal to the levels of variable distributed vertically.
 
@@ -397,29 +440,28 @@ carsplot_facet_4 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) +
 ```
 
 
-What are other types of common geoms?
+3. What are other types of common geoms?
 
-geom_histogram(): plots a histogram of single value; usually needs modification to number of bins.
++ geom_histogram(): plots a histogram of single value
 
-geom_density(): density plot of single variable.
++ geom_density(): density plot of single variable.
 
-geom_bar(): vertical barplot by categorical variable
++ geom_bar(): vertical barplot by categorical variable
 
-geom_point(): typical two-way scatterplot
++ geom_point(): typical two-way scatterplot
 
-geom_smooth(): simple line interpolator
++ geom_smooth(): simple line interpolator
 
 
 
-# Part 3: Practice
+# Part 3: Exercise
 ## Tidyverse practice
 
-Use the data below to first split the complete dataset into individual planes and then summarise each plane 
-by counting the number of flights (count = n()) and computing the mean distance flown.
+1. Use the data below to first split the complete dataset into individual planes and then summarise each plane by counting the number of flights (count = n()) and computing the mean distance flown.
 
-Next, determine what city is flown to the most often from NYC.
+2. Next, determine what city is flown to the most often from NYC.
 
-Finally, create a plot to create a barplot visualizing if flights are on time or delayed (defined as later than 5 minutes) by month. Additionally, ensure your plot has meaningful labels.
+3. Finally, use ggplot to create a plot to create a barplot visualizing if flights are on time or delayed (defined as later than 5 minutes) by month. Additionally, ensure your plot has meaningful labels.
 
 ```{r}
 #First, we need to install our data. This dataset includes airline on-time data for all flights departing NYC in 2013. 
