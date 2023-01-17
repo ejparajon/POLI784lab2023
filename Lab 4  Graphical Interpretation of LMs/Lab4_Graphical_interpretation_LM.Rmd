@@ -16,7 +16,7 @@ rm(list=ls())
 #install.packages("pacman")
 
 #Installing and loading packages for use
-pacman::p_load(tidyverse,palmerpenguins,ggeffects)
+pacman::p_load(tidyverse,palmerpenguins,ggeffects,ggthemes)
 
 
 #Creating a ggplot theme for use in several figures throughout the code.
@@ -74,19 +74,98 @@ carsplot + geom_smooth(method = "lm", se = FALSE,
 ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
   geom_point(aes(size = cyl), colour = "red") +
   labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_size_continuous(name = "Cylinders") +
-  theme_bw()
+  scale_size_continuous(name = "Cylinders") 
 
 ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
   geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
   labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_size_continuous(name = "Cylinders") +
-  theme_bw()
+  scale_size_continuous(name = "Cylinders") 
 ```
 
 + What are the benefits/drawbacks of each of these strategies? Think about how well the plot communicates information about the types of variables plotted as well as the relationship between them.
 
 + The above are great places to start out visualizing any potential relationships between your variables.
+
+## Brief divergence 1:Themes
+
++ As you've hopefully seen ggplot is highly customization. One way to standardize your graphs and avoid repeating your code to control ancillary parameters (e.g. color palettes, axes labels, etc.) is to use a ggplot() theme that includes bundles of code. This is what we were doing using theme_bw() above. 
+
++ You can also create custom themes yourself!
+
+```{r}
+#Here is a theme I use often
+
+plot_theme = theme(text = element_text(size=11),  #set text size to 11
+                   panel.grid.minor = element_blank(), #these next two lines set the grid lines to null
+                   panel.grid.major = element_blank(),
+                   panel.background = element_blank(),#these lines make the background of the plot blank
+                   plot.background = element_rect(fill = "transparent",colour = NA),
+                   axis.text = element_text(color="black"), #setting axis text to black 
+                   axis.line = element_line(colour = "black"),#setting axis lines to black 
+                   strip.text.y = element_text(angle = 0), axis.title.y = element_text(angle=90, hjust=.5, vjust=.5),#adjusting the angle of text
+                   axis.title = element_text(lineheight=1.1), #increasing height of axis title
+                   legend.position = "bottom",  #Placing the legend at the bottom of the figure
+                   legend.key = element_rect(colour = "transparent",  fill = "transparent") #setting legend to transparent
+) 
+
+
+#Using the theme
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  plot_theme
+
+#As you can see there are tons of options that you can set yourself. Alternatively you can use existing gplot_themes. Here are some of the most popular
+#bw
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_bw()
+
+#minimal
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_minimal()
+
+#classic
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_classic()
+
+#If you want even more themes you can use the ggthemes library!
+#install.packages("ggthemes")
+library(ggthemes)
+
+#WSJ
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_wsj()
+
+
+#538
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_fivethirtyeight()
+
+
+#The Economist
+ggplot(data=mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(shape = factor(cyl)), colour = "red", size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_size_continuous(name = "Cylinders") +
+  theme_economist()
+
+```
 
 2. Now let's jump back into the palmerpenguins dataset to perform some more in-depth visualization of regression models.
 
@@ -213,8 +292,52 @@ subeffects_plot <- ggplot(int_dat, aes(x=flipper_length_mm, y=fit, ymin=lwr, yma
 
 ```
 
+## Brief divergence 2: Facets
+
++ Using facets lets you create multi-panel plots based off a given variable. There are two different ggplot functions to use to facet. 
+
+1. facet_wrap() "wraps" a 1d ribbon of panels into 2d. Essentially, creating a square grid of panels, with rows and columns defined by combinations of two categorical variables (even if some combinations of faceting values do not exist in data). This is most useful when you want to facet by a single variable (or two)
+
+```{r}
+
+carsplot_facet <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_wrap(~ am)
+```
+
+2. facet_grid() forms a matrix of panels defined by row and column faceting variables, creating panels based on observed combinations of values in faceting variables.
+
+```{r}
+#facet_grid(.~variable) will return facets equal to the levels of variable distributed horizontally
+#facet_grid(variable~.) will return facets equal to the levels of variable distributed vertically.
+
+carsplot_facet_2 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(vs ~ am)
+
+carsplot_facet_3 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(am ~ .)
+
+carsplot_facet_4 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
+  geom_point(aes(colour = cyl), size = 2) +
+  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
+  scale_colour_continuous(name = "Cylinders")+
+  theme_bw()+
+  facet_grid(. ~ am)
+```
+
 ## Interaction analysis
-+ Additionally, in other models we may be interested in exploring the interaction between variables. Often these interaction effects are difficult to interpret without graphic aids. 
++ Additionally, in other models we may be interested in exploring the interaction between variables. Often these interaction effects are difficult to interpret without graphic aids (like facets). 
 
 + In this example, suppose we are interested in knowing if the effect of body mass on bill length is attenuated by the sex of the penguin. We begin by plotting the data and then perform interaction analysis.
 
