@@ -318,129 +318,28 @@ carsplot <- ggplot(data = mtcars, aes(x = disp, y = mpg)) +
 #ggsave("Plot1a.pdf") #can edit image sizes as well
 ```
 
-## Themes
++ Simple barplot example
+```{r, message=FALSE, warning=FALSE}
 
-+ As you've hopefully seen ggplot is highly customization. One way to standardize your graphs and avoid repeating your code to control ancillary parameters (e.g. color palettes, axes labels, etc.) is to use a ggplot() theme that includes bundles of code. This is what we were doing using theme_bw() above. 
-
-+ You can also create custom themes yourself!
-
-```{r}
-#Here is a theme I use often
-
-plot_theme = theme(text = element_text(size=11),  #set text size to 11
-                   panel.grid.minor = element_blank(), #these next two lines set the grid lines to null
-                   panel.grid.major = element_blank(),
-                   panel.background = element_blank(),#these lines make the background of the plot blank
-                   plot.background = element_rect(fill = "transparent",colour = NA),
-                   axis.text = element_text(color="black"), #setting axis text to black 
-                   axis.line = element_line(colour = "black"),#setting axis lines to black 
-                   strip.text.y = element_text(angle = 0), axis.title.y = element_text(angle=90, hjust=.5, vjust=.5),#adjusting the angle of text
-                   axis.title = element_text(lineheight=1.1), #increasing height of axis title
-                   legend.position = "bottom",  #Placing the legend at the bottom of the figure
-                   legend.key = element_rect(colour = "transparent",  fill = "transparent") #setting legend to transparent
-) 
+ggplot(mtcars, aes(x=as.factor(cyl) )) + 
+     geom_bar() + 
+    labs(title = "Count of Cars By Cylinders", x = "Number of Cylinders", y = "Count") 
 
 
-#Using the theme
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  plot_theme
+ggplot(mtcars, aes(x=as.factor(cyl) )) + 
+    geom_bar() + 
+    labs(title = "Count of Cars By Cylinders (Horizontal)", x = "Number of Cylinders", y = "Count")+
+     coord_flip()
 
-#As you can see there are tons of options that you can set yourself. Alternatively you can use existing gplot_themes. Here are some of the most popular
-#bw
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_bw()
-
-#minimal
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_minimal()
-
-#classic
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_classic()
-
-#If you want even more themes you can use the ggthemes library!
-#install.packages("ggthemes")
-library(ggthemes)
-
-#WSJ
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_wsj()
+#Grouped barplot
+#Calculate percentage (and counts) of cyl by gear type
+  d1<-pctgroup(mtcars,cyl,gear)
+#Graph
+ggplot(d1, aes(x=cyl,y=Percentage, fill=factor(gear),label=round(Percentage,digits=2))) + 
+      geom_bar(position="dodge", stat="identity")+
+      labs(title = "Percentage of Cars By Cylinders and Gear Type", x = "Number of Cylinders", y = "Percentage",fill="Gear") 
 
 
-#538
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_fivethirtyeight()
-
-
-#The Economist
-ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_economist()
-
-```
-
-## Facets
-
-+ Using facets lets you create multi-panel plots based off a given variable. There are two different ggplot functions to use to facet. 
-
-1. facet_wrap() "wraps" a 1d ribbon of panels into 2d. Essentially, creating a square grid of panels, with rows and columns defined by combinations of two categorical variables (even if some combinations of faceting values do not exist in data). This is most useful when you want to facet by a single variable (or two)
-
-```{r}
-
-carsplot_facet <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_bw()+
-  facet_wrap(~ am)
-```
-
-2. facet_grid() forms a matrix of panels defined by row and column faceting variables, creating panels based on observed combinations of values in faceting variables.
-
-```{r}
-#facet_grid(.~variable) will return facets equal to the levels of variable distributed horizontally
-#facet_grid(variable~.) will return facets equal to the levels of variable distributed vertically.
-
-carsplot_facet_2 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_bw()+
-  facet_grid(vs ~ am)
-
-carsplot_facet_3 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_bw()+
-  facet_grid(am ~ .)
-
-carsplot_facet_4 <- ggplot(data = mtcars, aes(x = disp, y = mpg)) + 
-  geom_point(aes(colour = cyl), size = 2) +
-  labs(title = "Car Stuff", x = "Displacement (cc)", y = "Miles per Gallon") +
-  scale_colour_continuous(name = "Cylinders")+
-  theme_bw()+
-  facet_grid(. ~ am)
 ```
 
 3. What are other types of common geoms?
