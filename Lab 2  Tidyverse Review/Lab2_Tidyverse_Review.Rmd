@@ -334,8 +334,8 @@ ggplot(mtcars, aes(x=as.factor(cyl) )) +
 #Graph
 ggplot(d1, aes(x=cyl,y=Percentage, fill=factor(gear),label=round(Percentage,digits=2))) + 
       geom_bar(position="dodge", stat="identity")+
+      geom_text(size=4,vjust=-0.5,hjust=0.75,position = position_dodge(width = 1))+
       labs(title = "Percentage of Cars By Cylinders and Gear Type", x = "Number of Cylinders", y = "Percentage",fill="Gear") 
-
 
 ```
 
