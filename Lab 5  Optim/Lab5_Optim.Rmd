@@ -86,13 +86,13 @@ pacman::p_load(tidyverse,broom)
 
 
 ```{r, include = TRUE, message = FALSE, warning = FALSE,fig.width=11, fig.height=5}
-
 #first generate our data (remember to set the seed)
-
 set.seed(123)
-x <- rpois(100, 5)
-xbar <- mean(x)
-n <- length(x)
+x <- rpois(100, 5) #sample from a poisson
+xbar <- mean(x) #mean of the poisson samples
+n <- length(x) #n obs
+
+#Here we will create several nested functions 
 
 #our score function (first derivative of the log likelihood)
 score <- function(mu) {
@@ -100,7 +100,8 @@ score <- function(mu) {
 }
 
 
-Funcall <- function(f, ...) f(...)
+Funcall <- function(f, ...) f(...) #Remember the dots! The dots operator allows you to pass an arbitrary number of additional arguments that aren't explicitly defined in the function
+
 Iterate <- function(f, n = 1) {
         function(x) {
                 Reduce(Funcall, rep.int(list(f), n), x, right = TRUE)
@@ -116,6 +117,8 @@ g <- function(x0, n) {
 }
 
 g <- Vectorize(g, "n") #vectorize our iterator with respect to n
+
+#calling the function g that we created above to find g(x)
 iterates <- g(10, 1:7)
 
 ggplot(data.frame(x=c(seq(.35, 10))), aes(x)) + stat_function(fun = score) +
@@ -127,9 +130,10 @@ ggplot(data.frame(x=c(seq(.35, 10))), aes(x)) + stat_function(fun = score) +
            x = c(10, iterates), y = c(rep(1510, 8)),
            angle = 0, vjust = 1, hjust = 2)
 
+
 ```
 
-Here we can see that across the 7 iterations, we get closer and closer to the root (which is 5.1). The algorithm continues (for as many iterations as you specify) until the parameter values stabilize, or $\theta_{n+1}$ and $\theta_{n}$ become approximately equal, and the root is approximated. If this doesn't make sense to you, watch \href{https://www.youtube.com/watch?v=-5e2cULI3H8}{this video}. 
+Here we can see that across the 7 iterations, we get closer and closer to the root (which is 5.1). The algorithm continues (for as many iterations as you specify) until the parameter values stabilize, or $\theta_{n+1}$ and $\theta_{n}$ become approximately equal, and the root is approximated. If this doesn't make sense to you, watch [this video](https://www.youtube.com/watch?v=-5e2cULI3H8). 
 
 We can see that by the 7th NR iteration, we are quite close to the root (5.1).This method is good for finding local optima as well, if you have a multimodal case for example. In those cases, you can specify intervals and find the local optimum (minimum or maximum). 
 
@@ -296,7 +300,7 @@ lm.optim(init_par, y = y, X = X)
 ```
 
 \newpage
-#Practice on your own:
+# Practice on your own:
 Now, on your own, try doing this with `mtcars` data, instead of generated data. Let's say we want to set our $y$ value as `mpg`, $x1$ as `wt`, and $x2$ as `gear`.
 
 ```{r, eval = FALSE, include = TRUE}
