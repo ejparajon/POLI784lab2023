@@ -200,20 +200,16 @@ texreg(pool(models_amelia))
 
 Compare how models from mice, Amelia, and the above methods perform to our true data:
 ```{r, eval = FALSE}
-#true model
-summary(model_true)
+# Estimate models
+mod <- list()
+mod[['True']] <- model_true
+mod[['Listwise deletion']] <- model_listwise
+mod[['Recoding']] <- model_recode
+mod[['Mice']] <- pool(model_mice)
+mod[['Amelia']] <- pool(models_amelia)
 
-#listwise
-summary(model_listwise)
+texreg(mod)
 
-#recoding
-summary(model_recode)
-
-#mice
-summary(pool(model_mice))
-
-#Amelia
-summary(pool(models_amelia))
 ```
 
 **On your own:**

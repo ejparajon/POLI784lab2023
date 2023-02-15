@@ -154,7 +154,6 @@ summary(pool(model_mice))
 
 #Using texreg package to display
 texreg(pool(model_mice))
-
 ```
 So mice is great. Let's also learn about Amelia II (my personal favorite, named after Amelia Earhart, because she is missing). Amelia is a little different because it assumes that your data is jointly distributed as multivariate normal. It uses the "expectation-maximization with bootstrapping" as an algorithm for imputation. The EM algorithm alternates between something called the expectation (E-step) and maximization (M-step) steps until it converges on values that were missing - it converges when the current and previous values are quite close (sounds a bit like Newton Raphson, no?). It brings in bootstraping by doing this process on multiple bootstrapped samples drawn from your original (and incomplete) data. 
 
@@ -194,20 +193,17 @@ texreg(pool(models_amelia))
 
 Compare how models from mice, Amelia, and the above methods perform to our true data:
 ```{r}
-#true model
-summary(model_true)
 
-#listwise
-summary(model_listwise)
+# Estimate models
+mod <- list()
+mod[['True']] <- model_true
+mod[['Listwise deletion']] <- model_listwise
+mod[['Recoding']] <- model_recode
+mod[['Mice']] <- pool(model_mice)
+mod[['Amelia']] <- pool(models_amelia)
 
-#recoding
-summary(model_recode)
+texreg(mod)
 
-#mice
-summary(pool(model_mice))
-
-#Amelia
-summary(pool(models_amelia))
 
 ```
 
