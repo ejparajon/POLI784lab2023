@@ -1,21 +1,21 @@
 ---
-title: "Lab 5: Optimization: Answers"
+title: 'Lab 5: Optimization: Answers'
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, include = FALSE)
 
 rm(list=ls())
 
-#Installing and loading packages for use
-pacman::p_load(tidyverse,broom)
 ```
+
 
 At the end of the day, maximum likelihood estimation is an optimization problem. We're looking for the set of inputs that maximizes that likelihood function. (Alternatively, you can swap the sign and treat it as a minimization problem, because the actual numbers are meaningless - only the relationship between them matters.)
 
-Let's say we have a function $f(x)$ - we want to know what value of $x$ will maximize or minimize that function. In other words, let us say that the local maximum (or minimum) of a functtion is called $x^*$ (because it's the star on top of the plot of the function). Then we could say, for maximization, that:
+Let's say we have a function $f(x)$ - we want to know what value of $x$ will maximize or minimize that function. In other words, let us say that the local maximum (or minimum) of a function is called $x^*$ (because it's the star on top of the plot of the function). Then we could say, for maximization, that:
 
 $$x^* = argmax f(x)$$
 
@@ -69,11 +69,19 @@ $$\mu_{n+1} = \mu_{n} - [- \frac{n \bar{x}}{\mu^{2}_n}]^{-1}(\frac{n \bar{x}}{\m
 $$= 2 \mu_n - \frac{\mu^{2}_n}{\bar{x}} $$
 
 
-You would iterate Newton's method multiple times until it converges and finds the root. In theory, the algorithm would converge perfectly when we find that root - however, we'll never actually reach the root exactly. Why? (Think of Zeno's Paradox.) Thus, we need to either (or both) cap the number of interations or set some convergence criteria. For simplicity's sake, we'll just cap the maximum number of iterations here.
+You would iterate Newton's method multiple times until it converges and finds the root. In theory, the algorithm would converge perfectly when we find that root - however, we'll never actually reach the root exactly. Why? (Think of Zeno's Paradox and asymptotes.) Thus, we need to either (or both) cap the number of iterations or set some convergence criteria. For simplicity's sake, we'll just cap the maximum number of iterations here.
 
 Here, we are going to set a starting point for the NR method of $\mu_0 = 10$. We will also set our iterations to 7, and then plot the score function with the values for each of these iterations. Don't worry so much about this code, but look at the plot. 
 
-```{r, include = TRUE, message = FALSE, warning = FALSE}
+```{r, include=TRUE}
+rm(list=ls())
+
+#Installing and loading packages
+pacman::p_load(tidyverse,broom)
+```
+
+
+```{r, include = TRUE, message = FALSE, warning = FALSE,fig.width=11, fig.height=5}
 
 #first generate our data (remember to set the seed)
 set.seed(123)
@@ -121,7 +129,7 @@ Here we can see that across the 7 iterations, we get closer and closer to the ro
 The point here is that you understand the intuition, don't worry so much about performing this yourself. Because, as we will see, there's very easy ways to optimze using certain functions in R, namely `optim()`!
 
 
-#Using `optim()` to maximize the log likelihood
+# Using `optim()` to maximize the log likelihood
 
 Although it is useful to learn Newton Raphson, today we will mostly be focusing on learning how to use `R` to optimize for us. Specifically, we'll be using the function `optim()`. To see how `optim()` works, let's use it to optimize the mean of a normally distributed random variable. Note that since we are just optimizing a single parameter here, we'll use the cousin function `optimize()`, but the intuition is the same.
 
@@ -161,7 +169,7 @@ X <- cbind(1, rnorm(100)) #what are we doing here? Binding together with a const
 theta_true <- c(1,1,1)
 #first element is Beta0, the second element is Beta1, and the last element is sigma2
 
-#just another way to simulate data
+#just another way to simulate data using matrix multiplication
 y <- rnorm(100, mean = X%*%theta_true[1:2], sd = theta_true[3])
 ```
 
