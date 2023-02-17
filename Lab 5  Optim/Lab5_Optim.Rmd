@@ -87,7 +87,7 @@ pacman::p_load(tidyverse,broom)
 
 ```{r, include = TRUE, message = FALSE, warning = FALSE,fig.width=11, fig.height=5}
 #first generate our data (remember to set the seed)
-set.seed(123)
+set.seed(1017)
 x <- rpois(100, 5) #sample from a poisson
 xbar <- mean(x) #mean of the poisson samples
 n <- length(x) #n obs
