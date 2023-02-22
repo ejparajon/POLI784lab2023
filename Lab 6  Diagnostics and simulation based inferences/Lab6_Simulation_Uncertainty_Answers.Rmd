@@ -1,7 +1,9 @@
 ---
 title: "Lab 6 - Diagnostics and simulation based inferences: Answers"
-author: "TA: Eric Parajon"
-output: pdf_document
+author: "Eric Parajon"
+output:
+  html_document:
+    df_print: paged
 ---
 
 This lab has been adapted from code by Simon Hoellerbauer and Isabel Laterzo. 
@@ -11,9 +13,22 @@ So far in lab, we have often simulated data to allow us to test out various meth
 2) Make our data go further with re-sampling 
 3) Create plots to help us assess our results when our variance/covariance matrix gets complex (when distributional assumptions can be tricky)
 
-Today, we will use simulation to help us assess the uncertainty around our parameter estimates and will then incorporate this uncertainty into the predicted values of our outcome variable.
+Today, we will use **simulation** to help us assess the uncertainty around our parameter estimates and will then incorporate this uncertainty into the predicted values of our outcome variable.
 
-```{r}
+
+We will be also be examining **Regression Diagnostics**, or ways to examine if our regression meets necessary assumptions, and if anything weird (e.g., outliers, etc.) is going on. Remember the four key assumptions of a linear regression:
+
+1) Linearity of the data - the relationship between x and y is linear
+
+2) Normality of residuals - the residual errors are normally distributed
+
+3) Homogeneity of residual variance - the residuals have CONSTANT variance (homoscedasticity)
+
+4) Independence of residual error terms
+
+The following tests will help us see if these assumptions hold, and will examine a number of possible issues. These include (but are not limited to) non-linearity of the data, heteroscedasticity (non-constant variance in the errors), and presence of influential values (outliers and high-leverage points).
+
+```{r, message = FALSE}
 #clear global environ
 rm(list=ls())
 
@@ -25,7 +40,7 @@ pacman::p_load(MASS,#required for multivariate normal
                AER)
 ```
 
-Download the "aid_data_95_ee.csv" in the Labs folder on Sakai and then read it into R:
+Download the "aid_data_95_ee.csv" in the Labs folder on Canvas and then read it into R:
 ```{r, warning = F, message = F}
 #remember to set your working directory!
 
@@ -396,7 +411,7 @@ shapiro.test(m1$residuals) #how does it look?
 ```
 
 And last but not least, you can use the performance package (and the see package) to generate really nicely formatted regression assumption plots!
-```{r}
+```{r,fig.width=10, fig.height=7}
 pacman::p_load(see,
                performance)
 
@@ -428,7 +443,7 @@ data(Guns)
 guns_model <- lm(robbery ~ male + income + density*law,
                  data = Guns)
 
-set.seed(53)
+set.seed(123)
 
 #sampling betas
 samp_beta_guns <- mvrnorm(10000, 
@@ -436,8 +451,16 @@ samp_beta_guns <- mvrnorm(10000,
                           vcov(guns_model))
 
 #confidence intervals
+  #Method 1
 t(apply(samp_beta_guns, 2, quantile, prob = c(.1, .9)))
-confint(guns_model, level = .8)
+  #Method 2
+CI<-confint(guns_model, level = .8)
+
+CI
+
+
+#Now doing the Monte Carlo inference for average prediction
+# to get the predicted robbery rate as the population density varies from its 10th percentile to its 90th percentile dependent on if a shall carry law is in effect
 
 #getting range of density
 density_sim <- with(Guns,
@@ -453,21 +476,26 @@ density_sim <- with(Guns,
                                         density = rep(density_sim, each = 2))
                    ))
 
+ ## Compute point estimates (estimation uncertainty)
+ 
 robbery_hat <- X_sim_guns %*% t(samp_beta_guns)
 
 #we only need quantiles for our confidence intervals
 robbery_hat_quant <- apply(robbery_hat, 1, #why 1?
                       quantile, c(0.1, 0.5, 0.9))
 
+#Creating prediction df
+
 pred_df_guns <- data.frame(PP = robbery_hat_quant[2, ],
                       UB = robbery_hat_quant[3, ],
                       LB = robbery_hat_quant[1, ],
                       Density = X_sim_guns[, "density"],
-                      Law = c("No", "Yes")[X_sim_guns[, "law"] + 1]) #why can we do this?  `
+                      Law = c("No", "Yes")[X_sim_guns[, "law"] + 1]) 
+#Plotting
 
 ggplot(data = pred_df_guns, aes(x = Density, y = PP, lty = Law)) +
   geom_ribbon(aes(ymin = LB, ymax = UB, fill = Law), alpha = 0.5) +
-  geom_line() + #what do you think this does?
+  geom_line() + 
   xlab("Population Density") +
   ylab("Predicted Number of Robberies") +
   theme_bw()

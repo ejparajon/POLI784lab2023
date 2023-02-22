@@ -1,7 +1,9 @@
 ---
 title: "Lab 6 - Diagnostics and simulation based inferences "
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 This lab has been adapted from code by Simon Hoellerbauer and Isabel Laterzo. 
@@ -11,10 +13,10 @@ So far in lab, we have often simulated data to allow us to test out various meth
 2) Make our data go further with re-sampling 
 3) Create plots to help us assess our results when our variance/covariance matrix gets complex (when distributional assumptions can be tricky)
 
-Today, we will use simulation to help us assess the uncertainty around our parameter estimates and will then incorporate this uncertainty into the predicted values of our outcome variable.
+Today, we will use **simulation** to help us assess the uncertainty around our parameter estimates and will then incorporate this uncertainty into the predicted values of our outcome variable.
 
 
-We will be examining **Regression Diagnostics**, or ways to examine if our regression meets necessary assumptions, and if anything weird (e.g., outliers, etc.) is going on. Remember the four key assumptions of a linear regression:
+We will be also be examining **Regression Diagnostics**, or ways to examine if our regression meets necessary assumptions, and if anything weird (e.g., outliers, etc.) is going on. Remember the four key assumptions of a linear regression:
 
 1) Linearity of the data - the relationship between x and y is linear
 
@@ -40,10 +42,10 @@ pacman::p_load(MASS,#required for multivariate normal
 
 ```
 
-Download the "aid_data_95_ee.csv" in the Labs folder on Sakai and then read it into R:
+Download the "aid_data_95_ee.csv" in the Labs folder on Canvas and then read it into R:
 ```{r, warning = F, message = F}
 #remember to set your working directory!
-setwd("______")
+#setwd("______")
 
 #read_csv comes from readr from the tidyverse suite of packages
 aid_data_95_ee <- read_csv("aid_data_95_ee.csv")
@@ -230,6 +232,7 @@ ggplot(data = pred_df, aes(x = cs_aid, y = PCS, lty = EU_Leverage)) +
   #theme
 ```
 # Regression Diagnostics
+Next we turn to another important topic evaluating your regressions!
 
 First we'll talk about (statistical) leverage! Points that are unusual (aka they are \textit{outliers}) with respect to the \textit{predictors}---that is, all of the $\mathbf{X}$---are said to have high \textit{leverage} because they can impact our coefficients. One way to assess this is called ``Cook's Distance," or a measure of an observation's influence. 
 
@@ -409,7 +412,7 @@ shapiro.test(m1$residuals) #how does it look?
 ```
 
 And last but not least, you can use the performance package (and the see package) to generate really nicely formatted regression assumption plots!
-```{r}
+```{r,fig.width=10, fig.height=7}
 pacman::p_load(see,
                performance)
 
@@ -448,7 +451,7 @@ samp_beta_guns <- mvrnorm(____,
                           coef(____),
                           vcov(____))
 
-#confidence intervals
+#confidence intervals (showing both methods)
 t(apply(____, 2, quantile, prob = c(.1, .9)))
 confint(guns_model, ____)
 
@@ -465,6 +468,7 @@ density_sim <- with(Guns,
                                         law = c(____),
                                         density = rep(density_sim, each = 2))
                    ))
+ ## Compute point estimates (estimation uncertainty)
 
 robbery_hat <- X_sim_guns %*% t(samp_beta_guns)
 
@@ -472,15 +476,21 @@ robbery_hat <- X_sim_guns %*% t(samp_beta_guns)
 robbery_hat_quant <- apply(robbery_hat, 1,
                       quantile, c(________))
 
+#Creating prediction df
 pred_df_guns <- data.frame(PP = robbery_hat_quant[2, ],
                       UB = robbery_hat_quant[3, ],
                       LB = robbery_hat_quant[1, ],
                       Density = X_sim_guns[, "density"],
                       Law = c("No", "Yes")[X_sim_guns[, "law"] + 1]) 
 
+#Plotting
 ggplot(data =____) +
   geom_ribbon(aes(____fill = Law), alpha = 0.5) +
-  geom_line() 
+  geom_line()+
+  xlab("____") +
+  ylab("____") +
+  theme_bw()
+
 
 
 ```
