@@ -1,10 +1,12 @@
 ---
-title: 'Lab 7: Missing Data and Imputation:Answers'
+title: 'Lab 8: Binomiaal Models in R'
 author: "Eric Parajon"
 header-includes:
-  - \usepackage{enumerate}
-  - \usepackage{graphicx}
-output: pdf_document
+- \usepackage{enumerate}
+- \usepackage{graphicx}
+output:
+  html_document:
+    df_print: paged
 ---
 
 Today's lab has been adapted from code by Chelsea Estancona, Isabel Laterzo, and Simon Hoellerbauer.
@@ -13,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 rm(list=ls()) # clear workspace
 #setwd("____") # change to wherever you saved the data
-set.seed(18765) # set seed for replication
+set.seed(1234) # set seed for replication
 
 #Load in packages
 pacman::p_load(tidyverse,
@@ -174,7 +176,7 @@ ggplot(data = plot_pred1, aes(x = tax, y = Pred_Probs, color = link)) +
 
 Simulation strikes again! This time around, we will do similar things, but with non-Normal outcomes, where simulations are even more helpful.
 
-Today, we're going to simulate predicted probabilities for a model with an interaction term and plot our results. We will use both the average case and the observed-case approaches.
+Today, we're going to simulate predicted probabilities for a model with an interaction term, use the distribution of these simulated probabilities to define confidence intervals, and plot our results, using both the average case and the observed-case approaches.
 
 ## Using Average-Case Approach
 
@@ -321,9 +323,9 @@ ggplot(plotdat, aes(x = tax, y = pe, ymin = lo, ymax = hi, color = Approach,
 
 + Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
 
-+ Average-Case Approach: Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
++ Average-Case Approach: Simulate and plot predicted probabilities over the range of **age**, holding all other variables at their mean, for the second model. Plot this.
 
-+ Observed-Case Approach: Generate an average predicted effect over the observed values of income for the first model. Plot this too.
++ Observed-Case Approach: Generate an average predicted effect over the observed values of **income** for the first model. Plot this too.
 
 ```{r}
 
@@ -359,17 +361,17 @@ sim_dat <- with(______, data.frame(intercept = 1, race = 1,
                                     age = seq(min(age), max(age), length.out = 100),
                                     age2 = (seq(min(age), max(age), length.out = 100))^2))
 
-sim_betas <- mvrnorm(______)
+sim_betas <- mvrnorm(______,______, vcov(m2))
 
 sim_pp <- apply(sim_betas, 1, function(x) invlogit(as.matrix(sim_dat) %*% x))
 
 sim_gg <- data.frame(age = ______, pe = apply(sim_pp, 1, mean),
-                     lo = ______,
+                     lo = apply(sim_pp, 1, quantile, probs = .025),
                      hi = ______)
 
 
-ggplot()
-
+ggplot(sim_gg, aes(x = age, y = pe, ymin = lo, ymax = hi)) +
+        ______
 
 # Observed-Case Approach
 
@@ -378,10 +380,10 @@ ggplot()
 temporary <- model.matrix(m1)
 
 #getting sim betas for m1
-sim_betas_m1 <- mvrnorm(______)
+sim_betas_m1 <- mvrnorm(______,______,vcov(m1))
 
 #getting range of income
-income_vec <- seq(from = ______,
+income_vec <- seq(from = min(turnout$income),to=____),
                   length.out = 100)
 
 
@@ -422,7 +424,9 @@ plotdat <- data.frame(plotdat, ______)
 
 colnames(______) <- c('pe', 'lo', 'hi', 'income')
 
-ggplot(______)
+ggplot(plotdat, aes(x = income, y = pe, ymin = lo, ymax = hi)) +
+          ______
+
 
 ```
 

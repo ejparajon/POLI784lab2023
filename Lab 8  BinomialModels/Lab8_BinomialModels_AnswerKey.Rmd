@@ -1,7 +1,9 @@
 ---
-title: 'Lab 8: Binomiaal Models in R'
-author: "TA: Eric Parajon"
-output: pdf_document
+title: 'Lab 8: Binomiaal Models in R: Answers'
+author: 'TA: Eric Parajon'
+output:
+  html_document:
+    df_print: paged
 ---
 
 Today's lab has been adapted from code by Chelsea Estancona, Isabel Laterzo, and Simon Hoellerbauer.
@@ -11,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 rm(list=ls()) # clear workspace
 #setwd("____") # change to wherever you saved the data
-set.seed(18765) # set seed for replication
+set.seed(1234) # set seed for replication
 
 #Load in packages
 pacman::p_load(tidyverse,
@@ -165,7 +167,7 @@ ggplot(data = plot_pred1, aes(x = tax, y = Pred_Probs, color = link)) +
 
 # Simulation
 
-We talked about simulations in Lab 4, when we talked about OLS. This time around, we will do similar things, but with non-Normal outcomes, where simulations are even more helpful! 
+Simulation strikes again! This time around, we will do similar things, but with non-Normal outcomes, where simulations are even more helpful.
 
 Today, we're going to simulate predicted probabilities for a model with an interaction term, use the distribution of these simulated probabilities to define confidence intervals, and plot our results, using both the average case and the observed-case approaches.
 
@@ -312,9 +314,9 @@ ggplot(plotdat, aes(x = tax, y = pe, ymin = lo, ymax = hi, color = Approach,
 
 + Compare the model fit of these two options using lrtest, AIC, and BIC. Which do you choose as the better fitting model?
 
-+ Average-Case Approach: Simulate and plot predicted probabilities over the range of age, holding all other variables at their mean, for the second model. Plot this.
++ Average-Case Approach: Simulate and plot predicted probabilities over the range of **age**, holding all other variables at their mean, for the second model. Plot this.
 
-+ Observed-Case Approach: Generate an average predicted effect over the observed values of income for the first model. Plot this too.
++ Observed-Case Approach: Generate an average predicted effect over the observed values of **income** for the first model. Plot this too.
 
 
 Required packages and data:
