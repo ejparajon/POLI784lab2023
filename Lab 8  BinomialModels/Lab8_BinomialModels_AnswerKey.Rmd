@@ -1,5 +1,5 @@
 ---
-title: 'Lab 8: Binomiaal Models in R: Answers'
+title: 'Lab 8: Binomial Models in R: Answers'
 author: 'TA: Eric Parajon'
 output:
   html_document:
@@ -7,7 +7,7 @@ output:
 ---
 
 Today's lab has been adapted from code by Chelsea Estancona, Isabel Laterzo, and Simon Hoellerbauer.
-```{r setup, include=FALSE}
+```{r setup, include=T}
 knitr::opts_chunk$set(echo = TRUE)
 
 
@@ -17,8 +17,7 @@ set.seed(1234) # set seed for replication
 
 #Load in packages
 pacman::p_load(tidyverse,
-               rio,
-               arm)#for importing data
+               rio)#for importing data
 ```
 
 
@@ -38,7 +37,7 @@ Let's plot our DV. This is always a good practice for *all* variables (independe
 ```{r}
 ggplot(colombia, aes(x = as.factor(AUC))) +
   geom_bar() +
-  labs(x = 'AUC Presence') +
+  labs(x = 'Autodefensas Unidas de Colombia Presence') +
   theme_bw()
 ```
 
@@ -76,30 +75,31 @@ In doing so, we'll want to think about a 'hypothetical case' for which we want t
 ```{r}
 ## calculate value of the linear predictor for this variable profile
 linpred <- as.numeric(with(colombia, coef(m1)[1] +
-                             coef(m1)[2] * mean(tribut_2_log, na.rm = T) +
-                             coef(m1)[3] * mean(tribut_2_log, na.rm = T)^2 +
-                             coef(m1)[4] * mean(pop_attacks, na.rm = T) +
-                             coef(m1)[5] * mean(disbogota, na.rm = T) +
+                             coef(m1)[2] * mean(tribut_2_log, na.rm = TRUE) +
+                             coef(m1)[3] * mean(tribut_2_log, na.rm = TRUE)^2 +
+                             coef(m1)[4] * mean(pop_attacks, na.rm = TRUE) +
+                             coef(m1)[5] * mean(disbogota, na.rm = TRUE) +
                              coef(m1)[6] * (1) + #could set this to its mode
-                             coef(m1)[7] * mean(pop_log, na.rm = T)))
+                             coef(m1)[7] * mean(pop_log, na.rm = TRUE)))
 
 #let's take a look!
-arm::invlogit #no parentheses from the arm package
+stats::plogis
 
-## invlogit lets us transform our log-odds to the range (0,1) - now interpretable
+## plogis lets us transform our log-odds to the range (0,1) - now interpretable
 ## as a standard probability
-invlogit(linpred)
+
+plogis(linpred)
 ```
 We can also do this using the 'predict' function: 
 
 ```{r}
 ## create a 'new data' frame: we want to predict the probability for a hypothetical situation.
-new_data <- with(colombia, data.frame(tribut_2_log = mean(tribut_2_log, na.rm = T),
-                                      tribut_2_log_sq = mean(tribut_2_log, na.rm = T)^2,
-                                      pop_attacks = mean(pop_attacks, na.rm = T),
-                                      disbogota = mean(disbogota, na.rm = T),
+new_data <- with(colombia, data.frame(tribut_2_log = mean(tribut_2_log, na.rm = TRUE),
+                                      tribut_2_log_sq = mean(tribut_2_log, na.rm = TRUE)^2,
+                                      pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                                      disbogota = mean(disbogota, na.rm = TRUE),
                                       drugs = c(0, 1),
-                                      pop_log = mean(pop_log, na.rm = T)))
+                                      pop_log = mean(pop_log, na.rm = TRUE)))
 ## note above that I include both possible values for drugs. the 'data.frame()'
 ## command is flexible and will intelligently duplicate the other values
 
@@ -108,34 +108,37 @@ predict(m1, newdata = new_data, type = 'response')
 
 What if we were interested in a *range* of values' predicted probability? We could modify our newdata frame and our predict() function to allow for this. 
 
-```{r}
-min_tax <- min(colombia$tribut_2_log, na.rm = T)
-max_tax <- max(colombia$tribut_2_log, na.rm = T)
-min_tax_2 <- min(colombia$tribut_2_log_sq, na.rm = T)
-max_tax_2 <- max(colombia$tribut_2_log_sq, na.rm = T)
+```{r,results="hide"}
+min_tax <- min(colombia$tribut_2_log, na.rm = TRUE)
+max_tax <- max(colombia$tribut_2_log, na.rm = TRUE)
+min_tax_2 <- min(colombia$tribut_2_log_sq, na.rm = TRUE)
+max_tax_2 <- max(colombia$tribut_2_log_sq, na.rm = TRUE)
 
 new_data_2 <- with(colombia,
                  data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
                                                length.out = 100),
                             tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
                                                   length.out = 100),
-                            pop_attacks = mean(pop_attacks, na.rm = T),
-                            disbogota = mean(disbogota, na.rm = T),
-                            drugs = 1, pop_log = mean(pop_log, na.rm = T)))
+                            pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                            disbogota = mean(disbogota, na.rm = TRUE),
+                            drugs = 1, pop_log = mean(pop_log, na.rm = TRUE)))
 
 new_data_3 <- with(colombia,
                  data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
                                                length.out = 100),
                             tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
                                                   length.out = 100),
-                            pop_attacks = mean(pop_attacks, na.rm = T),
-                            disbogota = mean(disbogota, na.rm = T),
-                            drugs = 0, pop_log = mean(pop_log, na.rm = T)))
+                            pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                            disbogota = mean(disbogota, na.rm = TRUE),
+                            drugs = 0, pop_log = mean(pop_log, na.rm = TRUE)))
 
 
 predict(m1, newdata = new_data_2, type = 'response') # what is the length of this output?
 predict(m2, newdata = new_data_3, type = 'response')
 
+```
+
+```{r}
 #we can calculate the logit predicted probs by hand by doing 1/(1 + exp(-linpred))
 #How could we calculate this for probit?
 
@@ -162,7 +165,10 @@ ggplot(data = plot_pred1, aes(x = tax, y = Pred_Probs, color = link)) +
   geom_line() +
   scale_color_discrete(name = 'Link Function') +
   labs(x = 'Tax Revenue', y = 'Predicted Probability') +
-  theme_bw()
+  theme_bw()+
+  geom_rug(data = colombia, aes(x = tribut_2_log), 
+           size = 1, inherit.aes = F) #adding rug plot what is this showing us? Why is there a divergence?
+
 ```
 
 # Simulation
@@ -189,8 +195,8 @@ beta_sims <- mvrnorm(N_sim, betas, vcv)
 ## create a vector that is a sequence of 100 points, evenly spaced between the
 ## lowest and highest observed values of tax income in the data set. we have to
 ## do this for the (tax^2) variable, too!
-tax_min <- with(colombia, min(tribut_2_log, na.rm = T))
-tax_max <- with(colombia, max(tribut_2_log, na.rm = T))
+tax_min <- with(colombia, min(tribut_2_log, na.rm = TRUE))
+tax_max <- with(colombia, max(tribut_2_log, na.rm = TRUE))
 tax_vec <- seq(from = tax_min, to = tax_max, length = 100)
 trans_vec <- (tax_vec^2)
 ## these will be the x values over which we can plot the predicted probability.
@@ -202,10 +208,10 @@ trans_vec <- (tax_vec^2)
 hyp <- with(colombia, data.frame(intercept = 1, 
                                  tribut_2_log = tax_vec,
                                  tribut_2_log_sq = trans_vec,
-                                 pop_attacks = mean(pop_attacks, na.rm = T),
-                                 disbogota = mean(disbogota, na.rm = T),
+                                 pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                                 disbogota = mean(disbogota, na.rm = TRUE),
                                  drugs = 1,
-                                 pop_log = mean(pop_log, na.rm = T)))
+                                 pop_log = mean(pop_log, na.rm = TRUE)))
 
 #We could also have done this using model.matrix()
 
@@ -214,12 +220,12 @@ pp_sims <- matrix(NA, nrow = N_sim, ncol = length(tax_vec))
 #Using a for() loop to fill wth simulated pred. probs
 for(i in 1:N_sim) {
   
-  pp_sims[i, ] <- invlogit(as.matrix(hyp) %*% beta_sims[i, ])
+  pp_sims[i, ] <- plogis(as.matrix(hyp) %*% beta_sims[i, ])
   
 }
 
 #we could also do this with less code:
-pp_sims2 <- invlogit(as.matrix(hyp) %*% t(beta_sims))
+pp_sims2 <- plogis(as.matrix(hyp) %*% t(beta_sims))
 
 dim(pp_sims)
 dim(pp_sims2)
@@ -255,7 +261,7 @@ ggplot(sim_output, aes(x = tax, y = pe, ymin = lo, ymax = hi)) +
 
 The code above created a hypothetical set of cases in which we might be interested, but what if we wanted more of an average effect? To this end, we can code and plot an 'average predictive effect' that covers the values of our key variable (we still generate predicted probabilities 'along' these values) and all possible values of the other variables in our dataset.
 
-```{r, cache = TRUE}
+```{r,message=FALSE, results='hide'}
 ## create a 'temporary' dataset - bind a 1 for the intercept and omit missingness
 temporary <- model.matrix( ~ tribut_2_log + tribut_2_log_sq + pop_attacks + 
                              disbogota + drugs + pop_log, data = colombia)
@@ -268,7 +274,7 @@ pp <- purrr::map_dfc(tax_vec, function(j) {
     temporary[, "tribut_2_log"] <- j
     temporary[, "tribut_2_log_sq"] <- j^2
     
-    pp <- invlogit(temporary %*% t(beta_sims))
+    pp <- plogis(temporary %*% t(beta_sims))
     
     #getting mean for each set of betas
     pp <- apply(pp, 2, mean)
@@ -276,6 +282,9 @@ pp <- purrr::map_dfc(tax_vec, function(j) {
     return(pp)
     })
 
+```
+
+```{r}
 
 ## find the mean (average predictive effect) for each observation, and bind with
 ## confidence measures (interval) 
@@ -359,7 +368,7 @@ In order to simulate different betas, we take a predetermined number of draws (1
 ```{r}
 sim_betas <- mvrnorm(1e3, coef(m2), vcov(m2))
 
-sim_pp <- apply(sim_betas, 1, function(x) invlogit(as.matrix(sim_dat) %*% x))
+sim_pp <- apply(sim_betas, 1, function(x) plogis(as.matrix(sim_dat) %*% x))
 
 sim_gg <- data.frame(age = sim_dat$age, pe = apply(sim_pp, 1, mean),
                      lo = apply(sim_pp, 1, quantile, probs = .025),
@@ -405,11 +414,11 @@ income_vec <- seq(from = min(turnout$income), to = max(turnout$income),
 
 In the next step, we do several important things at once. We will do these things using the `map_dfc` function from `purrr` (part of the tidyverse). This works a lot like the `apply` family of functions, but is somewhat faster. It maps a function to a vector and then, because of the `_dfc` suffix, column binds the results of the function together. In other words, we apply the function to each element in the vector, and then (because the function returns a vector) we get a dataframe in as output. Note that we could do something similar with `lapply`, but then we would get a list of vectors.
 
-```{r}
+```{r,message=FALSE, results='hide'}
 pp <- map_dfc(income_vec, function(j) {
     temporary[, "income"] <- j
     
-    pp <- invlogit(temporary %*% t(sim_betas_m1))
+    pp <- plogis(temporary %*% t(sim_betas_m1))
     
     pp <- apply(pp, 2, mean)
   
@@ -430,7 +439,7 @@ head(temporary)
 ```
 2. We then matrix multiply this new design matrix, with all actual values of our predictor of interest replaced by one hypothetical value of our predictor interest and with all the other values held at their observed values, by our simulated betas. This creates a matrix, which has as many rows as the rows of our data, and as many columns as there are samples of our betas.  
 ```{r}
-dim(invlogit(temporary %*% t(sim_betas_m1)))
+dim(plogis(temporary %*% t(sim_betas_m1)))
 ```
 3. We then take the mean across the columns (`margins = 2`) because different columns represent different predicted probabilities, for each of the observations in our temporary design matrix, when we use different betas and when our predictor of interest has been replaced with one value. This means that we then have a mean predicted probability for each different set of betas when our predictor of interest is at a certain value.
 

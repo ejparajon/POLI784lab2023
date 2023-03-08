@@ -12,7 +12,7 @@
 <meta name="author" content="Eric Parajon" />
 
 
-<title>Lab 8: Binomiaal Models in R</title>
+<title>Lab 8: Binomial Models in R</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -1620,7 +1620,7 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Lab 8: Binomiaal Models in R</h1>
+<h1 class="title toc-ignore">Lab 8: Binomial Models in R</h1>
 <h4 class="author">Eric Parajon</h4>
 
 </div>
@@ -1628,6 +1628,15 @@ display: none;
 
 <p>Today’s lab has been adapted from code by Chelsea Estancona, Isabel
 Laterzo, and Simon Hoellerbauer.</p>
+<pre class="r"><code>knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+
+rm(list=ls()) # clear workspace
+#setwd(&quot;____&quot;) # change to wherever you saved the data
+set.seed(1234) # set seed for replication
+
+#Load in packages
+pacman::p_load(tidyverse,
+               rio)#for importing data</code></pre>
 <div id="binomial-models" class="section level1">
 <h1>Binomial Models</h1>
 <p>Today we’ll work through a fairly standard problem: you have a
@@ -1642,7 +1651,7 @@ presence in certain municipalities.</p>
 variables (independent or dependent) in your work.</p>
 <pre class="r"><code>ggplot(colombia, aes(x = as.factor(AUC))) +
   geom_bar() +
-  labs(x = &#39;AUC Presence&#39;) +
+  labs(x = &#39;Autodefensas Unidas de Colombia Presence&#39;) +
   theme_bw()</code></pre>
 <p>Note that plotting in this way can also give us information about
 missingness (which there’s a lot of on this variable). Remember - what
@@ -1677,27 +1686,29 @@ capitol, drug crops, and the average population. <em>Note</em>: This is
 the so-called average case approach.</p>
 <pre class="r"><code>## calculate value of the linear predictor for this variable profile
 linpred &lt;- as.numeric(with(colombia, coef(m1)[1] +
-                             coef(m1)[2] * mean(tribut_2_log, na.rm = T) +
-                             coef(m1)[3] * mean(tribut_2_log, na.rm = T)^2 +
-                             coef(m1)[4] * mean(pop_attacks, na.rm = T) +
-                             coef(m1)[5] * mean(disbogota, na.rm = T) +
+                             coef(m1)[2] * mean(tribut_2_log, na.rm = TRUE) +
+                             coef(m1)[3] * mean(tribut_2_log, na.rm = TRUE)^2 +
+                             coef(m1)[4] * mean(pop_attacks, na.rm = TRUE) +
+                             coef(m1)[5] * mean(disbogota, na.rm = TRUE) +
                              coef(m1)[6] * (1) + #could set this to its mode
-                             coef(m1)[7] * mean(pop_log, na.rm = T)))
+                             coef(m1)[7] * mean(pop_log, na.rm = TRUE)))
+
 
 #let&#39;s take a look!
-invlogit #no parentheses from the arm package
+stats::plogis
 
-## invlogit lets us transform our log-odds to the range (0,1) - now interpretable
+## plogis lets us transform our log-odds to the range (0,1) - now interpretable
 ## as a standard probability
-invlogit(linpred)</code></pre>
+
+plogis(linpred)</code></pre>
 <p>We can also do this using the ‘predict’ function:</p>
 <pre class="r"><code>## create a &#39;new data&#39; frame: we want to predict the probability for a hypothetical situation.
-new_data &lt;- with(colombia, data.frame(tribut_2_log = mean(tribut_2_log, na.rm = T),
-                                      tribut_2_log_sq = mean(tribut_2_log, na.rm = T)^2,
-                                      pop_attacks = mean(pop_attacks, na.rm = T),
-                                      disbogota = mean(disbogota, na.rm = T),
+new_data &lt;- with(colombia, data.frame(tribut_2_log = mean(tribut_2_log, na.rm = TRUE),
+                                      tribut_2_log_sq = mean(tribut_2_log, na.rm = TRUE)^2,
+                                      pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                                      disbogota = mean(disbogota, na.rm = TRUE),
                                       drugs = c(0, 1),
-                                      pop_log = mean(pop_log, na.rm = T)))
+                                      pop_log = mean(pop_log, na.rm = TRUE)))
 ## note above that I include both possible values for drugs. the &#39;data.frame()&#39;
 ## command is flexible and will intelligently duplicate the other values
 
@@ -1706,28 +1717,28 @@ predict(_____, newdata = ________, type = &#39;response&#39;) #The type=&quot;re
 <p>What if we were interested in a <em>range</em> of values’ predicted
 probability? We could modify our newdata frame and our predict()
 function to allow for this.</p>
-<pre class="r"><code>min_tax &lt;- min(colombia$tribut_2_log, na.rm = T)
-max_tax &lt;- max(colombia$tribut_2_log, na.rm = T)
-min_tax_2 &lt;- min(colombia$tribut_2_log_sq, na.rm = T)
-max_tax_2 &lt;- max(colombia$tribut_2_log_sq, na.rm = T)
+<pre class="r"><code>min_tax &lt;- min(colombia$tribut_2_log, na.rm = TRUE)
+max_tax &lt;- max(colombia$tribut_2_log, na.rm = TRUE)
+min_tax_2 &lt;- min(colombia$tribut_2_log_sq, na.rm = TRUE)
+max_tax_2 &lt;- max(colombia$tribut_2_log_sq, na.rm = TRUE)
 
 new_data_2 &lt;- with(colombia,
                  data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
                                                length.out = 100),
                             tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
                                                   length.out = 100),
-                            pop_attacks = mean(pop_attacks, na.rm = T),
-                            disbogota = mean(disbogota, na.rm = T),
-                            drugs = 1, pop_log = mean(pop_log, na.rm = T)))
+                            pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                            disbogota = mean(disbogota, na.rm = TRUE),
+                            drugs = 1, pop_log = mean(pop_log, na.rm = TRUE)))
 
 new_data_3 &lt;- with(colombia,
                  data.frame(tribut_2_log = seq(from = min_tax, to = max_tax,
                                                length.out = 100),
                             tribut_2_log_sq = seq(from = min_tax_2, to = max_tax_2,
                                                   length.out = 100),
-                            pop_attacks = mean(pop_attacks, na.rm = T),
-                            disbogota = mean(disbogota, na.rm = T),
-                            drugs = 0, pop_log = mean(pop_log, na.rm = T)))
+                            pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                            disbogota = mean(disbogota, na.rm = TRUE),
+                            drugs = 0, pop_log = mean(pop_log, na.rm = TRUE)))
 
 
 predict(m1, newdata = new_data_2, type = &#39;response&#39;) # what is the length of this output?
@@ -1761,7 +1772,9 @@ ggplot(data = plot_pred1, aes(x = tax, y = Pred_Probs, color = link)) +
   geom_line() +
   scale_color_discrete(name = &#39;Link Function&#39;) +
   labs(x = &#39;Tax Revenue&#39;, y = &#39;Predicted Probability&#39;) +
-  theme_bw()</code></pre>
+  theme_bw()+
+  geom_rug(data = colombia, aes(x = tribut_2_log), 
+           size = 1, inherit.aes = F) #adding rug plot what is this showing us? Why is there a divergence?</code></pre>
 </div>
 <div id="simulation" class="section level1">
 <h1>Simulation</h1>
@@ -1789,8 +1802,8 @@ beta_sims &lt;- mvrnorm(N_sim, betas, vcv)
 ## create a vector that is a sequence of 100 points, evenly spaced between the
 ## lowest and highest observed values of tax income in the data set. we have to
 ## do this for the (tax^2) variable, too!
-tax_min &lt;- with(colombia, min(tribut_2_log, na.rm = T))
-tax_max &lt;- with(colombia, max(tribut_2_log, na.rm = T))
+tax_min &lt;- with(colombia, min(tribut_2_log, na.rm = TRUE))
+tax_max &lt;- with(colombia, max(tribut_2_log, na.rm = TRUE))
 tax_vec &lt;- seq(from = tax_min, to = tax_max, length = 100)
 trans_vec &lt;- (tax_vec^2)
 ## these will be the x values over which we can plot the predicted probability.
@@ -1802,10 +1815,10 @@ trans_vec &lt;- (tax_vec^2)
 hyp &lt;- with(colombia, data.frame(intercept = 1, 
                                  tribut_2_log = tax_vec,
                                  tribut_2_log_sq = trans_vec,
-                                 pop_attacks = mean(pop_attacks, na.rm = T),
-                                 disbogota = mean(disbogota, na.rm = T),
+                                 pop_attacks = mean(pop_attacks, na.rm = TRUE),
+                                 disbogota = mean(disbogota, na.rm = TRUE),
                                  drugs = 1,
-                                 pop_log = mean(pop_log, na.rm = T)))
+                                 pop_log = mean(pop_log, na.rm = TRUE)))
 
 #We could also have done this using model.matrix()
 
@@ -1814,12 +1827,12 @@ pp_sims &lt;- matrix(NA, nrow = N_sim, ncol = length(tax_vec))
 #Using a for() loop to fill wth simulated pred. probs
 for(i in 1:N_sim) {
   
-  pp_sims[i, ] &lt;- invlogit(as.matrix(hyp) %*% beta_sims[i, ])
+  pp_sims[i, ] &lt;- plogis(as.matrix(hyp) %*% beta_sims[i, ])
   
 }
 
 #we could also do this with less code:
-pp_sims2 &lt;- invlogit(as.matrix(hyp) %*% t(beta_sims))
+pp_sims2 &lt;- plogis(as.matrix(hyp) %*% t(beta_sims))
 
 dim(pp_sims)
 dim(pp_sims2)
@@ -1866,7 +1879,7 @@ pp &lt;- purrr::map_dfc(tax_vec, function(j) {
     temporary[, &quot;tribut_2_log&quot;] &lt;- j
     temporary[, &quot;tribut_2_log_sq&quot;] &lt;- j^2
     
-    pp &lt;- invlogit(temporary %*% t(beta_sims))
+    pp &lt;- plogis(temporary %*% t(beta_sims))
     
     #getting mean for each set of betas
     pp &lt;- apply(pp, 2, mean)
@@ -1957,7 +1970,7 @@ sim_dat &lt;- with(______, data.frame(intercept = 1, race = 1,
 
 sim_betas &lt;- mvrnorm(______,______, vcov(m2))
 
-sim_pp &lt;- apply(sim_betas, 1, function(x) invlogit(as.matrix(sim_dat) %*% x))
+sim_pp &lt;- apply(sim_betas, 1, function(x) plogis(as.matrix(sim_dat) %*% x))
 
 sim_gg &lt;- data.frame(age = ______, pe = apply(sim_pp, 1, mean),
                      lo = apply(sim_pp, 1, quantile, probs = .025),
@@ -1996,7 +2009,7 @@ income_vec &lt;- seq(from = min(turnout$income),to=____),
 pp &lt;- map_dfc(income_vec, function(j) {
     temporary[, &quot;income&quot;] &lt;- j
     
-    pp &lt;- invlogit(temporary %*% t(sim_betas_m1))
+    pp &lt;- plogis(temporary %*% t(sim_betas_m1))
     
     pp &lt;- apply(pp, 2, mean)
   
