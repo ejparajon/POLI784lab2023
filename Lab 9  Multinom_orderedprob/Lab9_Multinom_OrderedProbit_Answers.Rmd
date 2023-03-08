@@ -1,14 +1,16 @@
 ---
-title: "Lab 9: Multinomial and Ordered Probit Models"
+title: 'Lab 9: Multinomial and Ordered Probit Models: Answers'
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 Code has been adapted from Simon Hoellerbauer and Isabel Laterzo. 
 
 Load necessary packages:
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, messsage = FALSE)
+knitr::opts_chunk$set(echo = TRUE, messsage = FALSE, warning=FALSE)
 rm(list=ls()) 
 
 #Load in packages
@@ -457,7 +459,7 @@ both2
 ```
 
 
-# Lab Assignment
+# Exercise
 
 ## Ordered Outcome Practice
 
@@ -465,7 +467,7 @@ Use the data below. Estimate an ordered logit with `warm' as the DV, using male,
 
 Check the proportional odds assumption for at least one of your variables - does it hold?
 
-Generate a cumulative predicted probability plot.
+Generate a cumulative predicted probability plot varying the prestige of the respondent's occupation.
 
 Data and description from Christopher Adolph: 
 Example data from 1977, 1989 GSS:  Attitudes towards working mothers: "A working mother can establish just as warm and secure of a relationship with her child as a mother who does not work." SD, D, A, SA
@@ -473,7 +475,7 @@ Covariates: male respondent; white respondent; age of respondent;
 years of education of respondent;
 prestige of respondent's occupation (% considering prestigious)
 
-```{r, eval = F}
+```{r}
 hw <- read.csv(url("http://faculty.washington.edu/cadolph/mle/ordwarm2.csv"))
 
 
@@ -529,6 +531,8 @@ cumul_probs <- t(apply(probs, 1, cumsum)) #get the cumulative sum of the rows
 #transpose into columns for plotting and merging with values of gpa
 head(cumul_probs)
 plot_data <- data.frame(hw$prst, cumul_probs)
+
+#plot data
 ggplot(data=plot_data, aes(x=hw.prst))+
     geom_smooth(data=plot_data, aes(x=hw.prst, y=Strongly.disagree), se=FALSE)+
     geom_smooth(data=plot_data, aes(x=hw.prst, y=Disagree), se=FALSE)+

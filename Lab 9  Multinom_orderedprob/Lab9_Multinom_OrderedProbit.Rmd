@@ -1,7 +1,9 @@
 ---
-title: "Lab 9: Multinomial and Ordered Probit Models"
+title: 'Lab 9: Multinomial and Ordered Probit Models'
 author: "Eric Parajon"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 Code has been adapted from Simon Hoellerbauer and Isabel Laterzo. 
@@ -457,7 +459,7 @@ both2
 ```
 
 
-# Lab Assignment
+# Exercise
 
 ## Ordered Outcome Practice
 
@@ -465,7 +467,7 @@ Use the data below. Estimate an ordered logit with `warm' as the DV, using male,
 
 Check the proportional odds assumption for at least one of your variables - does it hold?
 
-Generate a cumulative predicted probability plot.
+Generate a cumulative predicted probability plot varying the prestige of the respondent's occupation.
 
 Data and description from Christopher Adolph: 
 Example data from 1977, 1989 GSS:  Attitudes towards working mothers: "A working mother can establish just as warm and secure of a relationship with her child as a mother who does not work." SD, D, A, SA
@@ -476,6 +478,44 @@ prestige of respondent's occupation (% considering prestigious)
 ```{r, eval = F}
 hw <- read.csv(url("http://faculty.washington.edu/cadolph/mle/ordwarm2.csv"))
 
+#Cleaning the data
+hw<-hw %>% 
+   mutate(warm = case_when(____)) %>%
+    mutate(warm = factor(warm, levels=c("Strongly disagree","Disagree","Agree","Strongly agree")))
+
+
+#Create the model
+warm_model <- polr(____, Hess = TRUE)
+summary(warm_model) 
+
+
+#What is the effect of increasing each predictor by one unit?
+#How do the odds of moving from a lower to adjacent higher category change?
+coefs <- warm_model$_____
+#odds ratios
+_____(coefs)
+
+#Check the proportional odds assumption for a variable
+
+
+#Generate a cumulative predicted probability plot.
+table(hw$male); table(hw$white); mean(hw$ed)
+
+hw_2 <- expand.grid(_____,
+                      prst = seq(from = min(hw$prst), to = max(hw$prst), length.out = 2293))
+
+
+probs <- predict(____, type = "probs") #type = is different than for binomial model
+
+
+cumul_probs <- t(apply(probs, 1, cumsum)) #get the cumulative sum of the rows
+#transpose into columns for plotting and merging with values of gpa
+
+plot_data <- data.frame(hw$prst, cumul_probs)
+
+#Generate a cumulative predicted probability plot.
+ggplot(data=plot_data, aes(x=hw.prst))+
+      ______
 
 ```
 
