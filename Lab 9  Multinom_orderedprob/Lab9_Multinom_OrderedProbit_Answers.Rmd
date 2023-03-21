@@ -17,7 +17,7 @@ rm(list=ls())
 pacman::p_load(tidyverse,
                haven,#for importing data
                labelled,
-               MASS,
+               ordinal,
                arm)
 
 ```
@@ -51,7 +51,7 @@ ggplot(grad, aes(x = apply, y = gpa)) +
 
 Now, after looking at our data and checking for any unusual patterns, we can build a simple model. 
 
-For ordered outcomes, we need to use the MASS package (rather than base R). Otherwise, our syntax looks much the same.
+For ordered outcomes, we need to use the ordinal package (rather than base R). Otherwise, our syntax looks much the same.
 
 ```{r}
 #First, a few checks to make sure our variables are in order: 
@@ -59,13 +59,13 @@ is.factor(grad$apply)
 print(levels(grad$apply))
 
 #Now, our model:
-m1 <- polr(apply ~ pared + public + gpa, 
-           data = grad, method = "probit", Hess = TRUE)
+m1 <- clm(apply ~ pared + public + gpa, 
+           data = grad, link = "probit")
 summary(m1) 
 
 #What is the effect of increasing each predictor by one unit?
 #How do the odds of moving from a lower to adjacent higher category change?
-coefs <- m1$coefficients[1:3]
+coefs <- m1$coefficients[3:5]
 #odds ratios
 exp(coefs)
 
@@ -99,8 +99,8 @@ We will also want to generate predicted probabilities and plot them. Let's first
 
 We can also check this first: 
 ```{r}
-tau1 <- m1$zeta[1] #extract latent thresholds (calculated w polr) from our model!
-tau2 <- m1$zeta[2]
+tau1 <- m1$alpha[1] #extract latent thresholds (calculated w clm) from our model!
+tau2 <- m1$alpha[2]
 p1 <- invlogit(tau1) # 1
 p2 <- invlogit(tau2) - invlogit(tau1) # 2
 p3 <- 1-invlogit(tau2)
@@ -124,9 +124,12 @@ grad_2 <- expand.grid(pared = 0, #modal value
                       public = 0, #modal value
                       gpa = seq(from = 1.9, to = 4, length.out = 1000))
 colnames(grad_2)<- c("pared", "public", "gpa")
-probs <- predict(m1, grad_2, type = "probs") #type = is different than for binomial model
-head(rowSums(probs)) #just to double check
-cumul_probs <- t(apply(probs, 1, cumsum)) #get the cumulative sum of the rows
+probs <- predict(m1, grad_2, type = "prob") #type = is different than for binomial model
+
+#?predict.clm
+
+head(rowSums(probs$fit)) #just to double check
+cumul_probs <- t(apply(probs$fit, 1, cumsum)) #get the cumulative sum of the rows
 #transpose into columns for plotting and merging with values of gpa
 head(cumul_probs)
 plot_data <- data.frame(grad_2$gpa, cumul_probs)
@@ -156,8 +159,8 @@ grad_3 <- expand.grid(
 library(MASS)
 set.seed(831213)
 
-coef_samp <- mvrnorm(1e3,coef(m1)
-                     ,vcov(m1)[1:3,1:3]) #keep relevant vals of vcov matrix
+coef_samp <- mvrnorm(1e3,coef(m1)[3:5]
+                     ,vcov(m1)[3:5,3:5]) #keep relevant columns
 
 ## Get linear predictors
 hyp_X <- model.matrix(~pared+public+gpa
@@ -165,7 +168,7 @@ hyp_X <- model.matrix(~pared+public+gpa
 eta <- hyp_X %*% t(coef_samp) 
 summary(t(eta)) 
 ## Get pred probs samples 
-taus <- m1$zeta #extract thresholds 
+taus <- m1$alpha #extract thresholds 
 pred_prob_diffs <- apply(eta,c(1,2)
                     ,function(x, J, tau){
                       prob_vec <- array(NA,J) #J categories - array() is generalizable
@@ -215,7 +218,7 @@ ggplot(fx_on_prob_ci, aes(x=pe, y=as.factor(public))) +
 
 pacman::p_load(nnet,#for multinom()
                mlogit,#for conditional mnl
-               cowplot)#we will use it to put plots together (an extension to ggplot2)
+               patchwork)#we will use it to put plots together (an extension to ggplot2)
 
 ```
 
@@ -420,8 +423,18 @@ fplot<-ggplot(data=f_pred)+
   theme_bw()
 
 
-both <- plot_grid(mplot, fplot, labels = c('Male', 'Female'))
+#Combining plot using patchwork (could also use cowplot())
+both<-mplot+fplot
+
+#Adding annotations
+both<-both + plot_annotation(tag_levels = 'a')
+
+both<-both + plot_annotation(tag_levels = list(c("Male","Female")))& 
+  theme(plot.tag.position = c(0, 1),
+        plot.tag = element_text(hjust = -.5, vjust = -0.20))
+
 both
+
 
 
 #Now let's separate out by support for capital punishment
@@ -451,10 +464,17 @@ nocap_plot<-ggplot(data=nocap_pred)+
     values=c(Haddad="red", Bolsonaro="blue", Gomes="green"))+
   theme_bw()
 
+#combining
+both2<-cap_plot+nocap_plot
 
-both2 <- plot_grid(cap_plot, nocap_plot, labels = c('Cap: Yes', 'Cap: No'))
+#Adding annotations
+both2<-both2 + plot_annotation(tag_levels = 'a')
+
+both2<-both2 + plot_annotation(tag_levels = list(c("Cap: Yes","Cap: No")))& 
+  theme(plot.tag.position = c(0, 1),
+        plot.tag = element_text(hjust = -.5, vjust = -0.20))
+
 both2
-
 
 ```
 
@@ -489,13 +509,14 @@ hw<-hw %>%
     mutate(warm = factor(warm, levels=c("Strongly disagree","Disagree","Agree","Strongly agree")))
 
 #Create the model
-warm_model <- polr(warm~male+white+age+ed+prst, 
-           data = hw, method = "probit", Hess = TRUE)
+warm_model <- clm(warm~male+white+age+ed+prst, 
+           data = hw, link = "probit")
 summary(warm_model) 
+
 
 #What is the effect of increasing each predictor by one unit?
 #How do the odds of moving from a lower to adjacent higher category change?
-coefs <- warm_model$coefficients[1:5]
+coefs <- warm_model$coefficients[5:8]
 #odds ratios
 exp(coefs)
 
@@ -525,9 +546,9 @@ hw_2 <- expand.grid(male = 1, #modal value
                       age=mean(hw$age),
                       prst = seq(from = min(hw$prst), to = max(hw$prst), length.out = 2293))
 
-probs <- predict(warm_model, hw_2, type = "probs") #type = is different than for binomial model
-head(rowSums(probs)) #just to double check
-cumul_probs <- t(apply(probs, 1, cumsum)) #get the cumulative sum of the rows
+probs <- predict(warm_model, hw_2, type = "prob") #type = is different than for binomial model
+head(rowSums(probs$fit)) #just to double check
+cumul_probs <- t(apply(probs$fit, 1, cumsum)) #get the cumulative sum of the rows
 #transpose into columns for plotting and merging with values of gpa
 head(cumul_probs)
 plot_data <- data.frame(hw$prst, cumul_probs)
