@@ -487,7 +487,7 @@ Use the data below. Estimate an ordered logit with `warm' as the DV, using male,
 
 Check the proportional odds assumption for at least one of your variables - does it hold?
 
-Generate a cumulative predicted probability plot varying the prestige of the respondent's occupation.
+Generate a cumulative predicted probability plot varying the age of the respondent.
 
 Data and description from Christopher Adolph: 
 Example data from 1977, 1989 GSS:  Attitudes towards working mothers: "A working mother can establish just as warm and secure of a relationship with her child as a mother who does not work." SD, D, A, SA
@@ -539,26 +539,33 @@ check_2 <- (m1_prop_1$coef[1] + m1_prop_1$coef[2]) -
 check_2
 
 #Generate a cumulative predicted probability plot.
-table(hw$male); table(hw$white); mean(hw$ed)
+
+#Compute age quartiles and create hypothetical age values between min and max
+age_quarts <- with(hw,c(min(age,na.rm = TRUE), max(age,na.rm=TRUE)))
+
+age_rug <- with(hw,seq(age_quarts[1], age_quarts[2], length.out=100))
+
+#Finding modal values
+table(hw$male); table(hw$white); mean(hw$ed); mean(hw$prst)
 hw_2 <- expand.grid(male = 1, #modal value
                       white = 1, #modal value
                       ed=mean(hw$ed),
-                      age=mean(hw$age),
-                      prst = seq(from = min(hw$prst), to = max(hw$prst), length.out = 2293))
+                      prst=mean(hw$prst),
+                      age = age_rug)
 
 probs <- predict(warm_model, hw_2, type = "prob") #type = is different than for binomial model
 head(rowSums(probs$fit)) #just to double check
 cumul_probs <- t(apply(probs$fit, 1, cumsum)) #get the cumulative sum of the rows
 #transpose into columns for plotting and merging with values of gpa
 head(cumul_probs)
-plot_data <- data.frame(hw$prst, cumul_probs)
+plot_data <- data.frame(age_rug, cumul_probs)
 
 #plot data
-ggplot(data=plot_data, aes(x=hw.prst))+
-    geom_smooth(data=plot_data, aes(x=hw.prst, y=Strongly.disagree), se=FALSE)+
-    geom_smooth(data=plot_data, aes(x=hw.prst, y=Disagree), se=FALSE)+
-    geom_smooth(data=plot_data, aes(x=hw.prst, y=Agree), se=FALSE)+
-      geom_smooth(data=plot_data, aes(x=hw.prst, y=Strongly.agree), se=FALSE)+
+ggplot(data=plot_data, aes(x=age_rug))+
+    geom_smooth(data=plot_data, aes(x=age_rug, y=Strongly.disagree), se=FALSE)+
+    geom_smooth(data=plot_data, aes(x=age_rug, y=Disagree), se=FALSE)+
+    geom_smooth(data=plot_data, aes(x=age_rug, y=Agree), se=FALSE)+
+      geom_smooth(data=plot_data, aes(x=age_rug, y=Strongly.agree), se=FALSE)+
     geom_ribbon(data=plot_data, aes(ymin=0, ymax=Strongly.disagree, fill="Strongly.disagree"))+
     geom_ribbon(data=plot_data, aes(ymin=Strongly.disagree, ymax=Disagree,
                                     fill="Disagree"))+
@@ -566,8 +573,8 @@ ggplot(data=plot_data, aes(x=hw.prst))+
                                     fill="Agree"))+
          geom_ribbon(data=plot_data, aes(ymin=Agree, ymax=Strongly.agree,
                                     fill="Strongly.agree"))+
-    labs(x="Values of prestige of occupation", y="Cumulative Predicted Probability")+
-    scale_fill_discrete(name="Hard Work")+
+    labs(x="Age of respondent", y="Cumulative Predicted Probability")+
+    scale_fill_discrete(name="Warm Relationship w/ Child")+
     theme_bw()
 
 

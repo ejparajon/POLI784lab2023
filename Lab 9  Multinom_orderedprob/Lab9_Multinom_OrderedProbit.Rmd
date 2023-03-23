@@ -487,7 +487,7 @@ Use the data below. Estimate an ordered logit with `warm' as the DV, using male,
 
 Check the proportional odds assumption for at least one of your variables - does it hold?
 
-Generate a cumulative predicted probability plot varying the prestige of the respondent's occupation.
+Generate a cumulative predicted probability plot varying the age of the respondent.
 
 Data and description from Christopher Adolph: 
 Example data from 1977, 1989 GSS:  Attitudes towards working mothers: "A working mother can establish just as warm and secure of a relationship with her child as a mother who does not work." SD, D, A, SA
@@ -518,11 +518,18 @@ _____(coefs)
 #Check the proportional odds assumption for a variable
 
 
-#Generate a cumulative predicted probability plot.
-table(hw$male); table(hw$white); mean(hw$ed)
+#Compute age quartiles and create hypothetical age values between min and max
+age_quarts <- with(hw,c(min(age,na.rm = TRUE), max(age,na.rm=TRUE)))
 
-hw_2 <- expand.grid(_____,
-                      prst = seq(from = min(hw$prst), to = max(hw$prst), length.out = 2293))
+age_rug <- with(hw,seq(age_quarts[1], age_quarts[2], length.out=100))
+
+#Finding modal values
+table(hw$male); table(hw$white); mean(hw$ed); mean(hw$prst)
+hw_2 <- expand.grid(male = 1, #modal value
+                      white = 1, #modal value
+                      ed=mean(hw$ed),
+                      prst=mean(hw$prst),
+                      age = age_rug)
 
 
 probs <- predict(____, type = "prob") #type = is different than for binomial model
@@ -531,10 +538,10 @@ probs <- predict(____, type = "prob") #type = is different than for binomial mod
 cumul_probs <- t(apply(probs$fit, 1, cumsum)) #get the cumulative sum of the rows
 #transpose into columns for plotting and merging with values of gpa
 
-plot_data <- data.frame(hw$prst, cumul_probs)
+plot_data <- data.frame(age_rug, cumul_probs)
 
-#Generate a cumulative predicted probability plot.
-ggplot(data=plot_data, aes(x=hw.prst))+
+#Generate a cumulative predicted probability plot varying by age
+ggplot(data=plot_data, aes(x=age_rug))+
       ______
 
 ```
