@@ -1667,6 +1667,7 @@ model_true &lt;- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width, data = d
 
 #lets copy this df and then add some missingness
 data_miss &lt;- data_clean
+data_miss[52:59,1] &lt;- rep(NA,2)
 data_miss[6:27,2] &lt;- rep(NA,2)
 data_miss[102:119,4] &lt;- rep(NA,2)
 data_miss[35:50,3] &lt;- rep(NA,2)
@@ -1675,10 +1676,10 @@ summary(data_miss) #check out those *~* NAs ~*~</code></pre>
 ##  Min.   :4.300   Min.   :2.000   Min.   :1.000   Min.   :0.100  
 ##  1st Qu.:5.100   1st Qu.:2.700   1st Qu.:2.175   1st Qu.:0.200  
 ##  Median :5.800   Median :3.000   Median :4.500   Median :1.300  
-##  Mean   :5.843   Mean   :2.981   Mean   :4.036   Mean   :1.083  
+##  Mean   :5.829   Mean   :2.981   Mean   :4.036   Mean   :1.083  
 ##  3rd Qu.:6.400   3rd Qu.:3.200   3rd Qu.:5.175   3rd Qu.:1.600  
 ##  Max.   :7.900   Max.   :4.200   Max.   :6.900   Max.   :2.500  
-##                  NA&#39;s   :22      NA&#39;s   :16      NA&#39;s   :18     
+##  NA&#39;s   :8       NA&#39;s   :22      NA&#39;s   :16      NA&#39;s   :18     
 ##        Species  
 ##  setosa    :50  
 ##  versicolor:50  
@@ -1688,7 +1689,7 @@ summary(data_miss) #check out those *~* NAs ~*~</code></pre>
 ##                 
 ## </code></pre>
 <pre class="r"><code>sum(is.na(data_miss))</code></pre>
-<pre><code>## [1] 56</code></pre>
+<pre><code>## [1] 64</code></pre>
 <p>Alright, let’s take a look at those NA’s more deeply</p>
 <pre class="r"><code>#what does this do?
 is.na(data_miss$Sepal.Width)</code></pre>
@@ -1716,7 +1717,7 @@ sum(is.na(data_miss$Sepal.Width))</code></pre>
 #An easy way to look at this across the whole DF
 colSums(is.na(data_miss))</code></pre>
 <pre><code>## Sepal.Length  Sepal.Width Petal.Length  Petal.Width      Species 
-##            0           22           16           18            0</code></pre>
+##            8           22           16           18            0</code></pre>
 <p><strong>Listwise Deletion</strong> Some people just delete the
 observations with missing values. Although this is definitely a viable
 approach, depending on how much missing data you have, you might be
@@ -1849,15 +1850,15 @@ amelia_data &lt;- amelia(x = data_miss,
                       noms=&quot;Species&quot;,
                        m = 5)</code></pre>
 <p>– Imputation 1 –</p>
-<p>1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16</p>
+<p>1 2 3 4 5 6 7 8 9</p>
 <p>– Imputation 2 –</p>
-<p>1 2 3 4 5 6 7 8 9 10</p>
+<p>1 2 3 4 5 6 7 8 9 10 11</p>
 <p>– Imputation 3 –</p>
-<p>1 2 3 4 5 6 7 8 9 10 11 12 13</p>
+<p>1 2 3 4 5 6 7 8 9 10 11</p>
 <p>– Imputation 4 –</p>
 <p>1 2 3 4 5 6 7 8 9</p>
 <p>– Imputation 5 –</p>
-<p>1 2 3 4 5 6 7 8 9 10</p>
+<p>1 2 3 4 5 6 7 8 9</p>
 <pre class="r"><code>#let&#39;s run the model again, but this time using a for loop
 models_amelia &lt;- vector(&quot;list&quot;, 5)  #vector for our 5 newly imputed data sets
 
@@ -1870,7 +1871,7 @@ for(i in 1:5){
 summary(pool(models_amelia))</code></pre>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["term"],"name":[1],"type":["fct"],"align":["left"]},{"label":["estimate"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["std.error"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["statistic"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["df"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["p.value"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"(Intercept)","2":"2.0421979","3":"0.27829131","4":"7.338346","5":"117.19670","6":"3.075454e-11"},{"1":"Sepal.Width","2":"0.6161902","3":"0.07352059","4":"8.381192","5":"126.79867","6":"8.512059e-14"},{"1":"Petal.Length","2":"0.6558969","3":"0.07931631","4":"8.269382","5":"22.13059","6":"3.242734e-08"},{"1":"Petal.Width","2":"-0.4500428","3":"0.18442455","4":"-2.440254","5":"18.74169","6":"2.479484e-02"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["term"],"name":[1],"type":["fct"],"align":["left"]},{"label":["estimate"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["std.error"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["statistic"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["df"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["p.value"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"(Intercept)","2":"2.1651329","3":"0.28479673","4":"7.602380","5":"94.30106","6":"2.127604e-11"},{"1":"Sepal.Width","2":"0.5939709","3":"0.07821903","4":"7.593689","5":"85.77808","6":"3.528957e-11"},{"1":"Petal.Length","2":"0.6325103","3":"0.06661246","4":"9.495374","5":"82.57646","6":"6.991161e-15"},{"1":"Petal.Width","2":"-0.4223098","3":"0.15704445","4":"-2.689110","5":"64.16882","6":"9.118910e-03"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <pre class="r"><code>#Putting into table
@@ -1895,7 +1896,7 @@ Model 1
 (Intercept)
 </td>
 <td style="padding-left: 5px;padding-right: 5px;">
-2.04<sup>***</sup>
+2.17<sup>***</sup>
 </td>
 </tr>
 <tr>
@@ -1911,23 +1912,7 @@ Model 1
 Sepal.Width
 </td>
 <td style="padding-left: 5px;padding-right: 5px;">
-0.62<sup>***</sup>
-</td>
-</tr>
-<tr>
-<td style="padding-left: 5px;padding-right: 5px;">
- 
-</td>
-<td style="padding-left: 5px;padding-right: 5px;">
-(0.07)
-</td>
-</tr>
-<tr>
-<td style="padding-left: 5px;padding-right: 5px;">
-Petal.Length
-</td>
-<td style="padding-left: 5px;padding-right: 5px;">
-0.66<sup>***</sup>
+0.59<sup>***</sup>
 </td>
 </tr>
 <tr>
@@ -1940,10 +1925,10 @@ Petal.Length
 </tr>
 <tr>
 <td style="padding-left: 5px;padding-right: 5px;">
-Petal.Width
+Petal.Length
 </td>
 <td style="padding-left: 5px;padding-right: 5px;">
--0.45<sup>*</sup>
+0.63<sup>***</sup>
 </td>
 </tr>
 <tr>
@@ -1951,7 +1936,23 @@ Petal.Width
  
 </td>
 <td style="padding-left: 5px;padding-right: 5px;">
-(0.18)
+(0.07)
+</td>
+</tr>
+<tr>
+<td style="padding-left: 5px;padding-right: 5px;">
+Petal.Width
+</td>
+<td style="padding-left: 5px;padding-right: 5px;">
+-0.42<sup>**</sup>
+</td>
+</tr>
+<tr>
+<td style="padding-left: 5px;padding-right: 5px;">
+ 
+</td>
+<td style="padding-left: 5px;padding-right: 5px;">
+(0.16)
 </td>
 </tr>
 <tr style="border-top: 1px solid #000000;">

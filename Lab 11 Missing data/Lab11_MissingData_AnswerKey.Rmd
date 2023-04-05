@@ -31,6 +31,7 @@ model_true <- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width, data = data
 
 #lets copy this df and then add some missingness
 data_miss <- data_clean
+data_miss[52:59,1] <- rep(NA,2)
 data_miss[6:27,2] <- rep(NA,2)
 data_miss[102:119,4] <- rep(NA,2)
 data_miss[35:50,3] <- rep(NA,2)
