@@ -19,31 +19,37 @@ First, let's get our data set up.
 #clear global environment
 rm(list=ls())
 
-#load in airquality data
-data_clean <- airquality
+#load in iris data
+data_clean <- iris
 summary(data_clean)
 
+#Checking number of NAs
+sum(is.na(data_clean))
+
 #here's our "true model" for future reference
-model_true <- lm(Temp~ Ozone + Solar.R + Wind, data = data_clean)
+model_true <- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width, data = data_clean)
 
 #lets copy this df and then add some missingness
 data_miss <- data_clean
-data_miss[4:9,3] <- rep(NA,6)
-data_miss[1:8,4] <- NA
+data_miss[6:27,2] <- rep(NA,2)
+data_miss[102:119,4] <- rep(NA,2)
+data_miss[35:50,3] <- rep(NA,2)
 summary(data_miss) #check out those *~* NAs ~*~
+
+sum(is.na(data_miss))
 
 ```
 
 Alright, let's take a look at those NA's more deeply
 ```{r}
 #what does this do?
-is.na(data_miss$Ozone)
+is.na(data_miss$Sepal.Width)
 
 #and this?
-which(is.na(data_miss$Ozone))
+which(is.na(data_miss$Sepal.Width))
 
 #and this?
-sum(is.na(data_miss$Ozone))
+sum(is.na(data_miss$Sepal.Width))
 
 #apply this to other variables!
 
@@ -61,8 +67,8 @@ data_listwise <- na.omit(data_miss)
 summary(data_listwise)
 
 #let's create an lm with this model to compare to later iterations
-#model Temp as your y, Ozone, Solar.R, and Wind as your x values
-model_listwise <- lm(Temp~ Ozone + Solar.R + Wind, data = data_listwise)
+
+model_listwise <- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width, data = data_listwise)
 
 summary(model_listwise)
 ```
@@ -79,28 +85,28 @@ Although this is a pretty easy approach, mean/median recoding decreases and chan
 data_recode <- data_miss
 
 #uses if else statements to recode NA values as the mean of the rest of that column
-data_recode$Ozone <- ifelse(is.na(data_recode$Ozone),
-                            mean(data_recode$Ozone, na.rm = TRUE),
-                            data_recode$Ozone)
+data_recode$Sepal.Width <- ifelse(is.na(data_recode$Sepal.Width),
+                            mean(data_recode$Sepal.Width, na.rm = TRUE),
+                            data_recode$Sepal.Width)
 
-data_recode$Solar.R<- ifelse(is.na(data_recode$Solar.R),
-                            mean(data_recode$Solar.R, na.rm = TRUE),
-                            data_recode$Solar.R)
+data_recode$Petal.Length<- ifelse(is.na(data_recode$Petal.Length),
+                            mean(data_recode$Petal.Length, na.rm = TRUE),
+                            data_recode$Petal.Length)
 
-data_recode$Wind<- ifelse(is.na(data_recode$Wind),
-                            mean(data_recode$Wind, na.rm = TRUE),
-                            data_recode$Wind)
+data_recode$Petal.Width<- ifelse(is.na(data_recode$Petal.Width),
+                            mean(data_recode$Petal.Width, na.rm = TRUE),
+                            data_recode$Petal.Width)
 
-data_recode$Temp <- ifelse(is.na(data_recode$Temp),
-                            mean(data_recode$Temp, na.rm = TRUE),
-                            data_recode$Temp)
+data_recode$Sepal.Length <- ifelse(is.na(data_recode$Sepal.Length),
+                            mean(data_recode$Sepal.Length, na.rm = TRUE),
+                            data_recode$Sepal.Length)
                           
 #summarize
 summary(data_recode)
 
 
 #linear model (same as above, but rename "model_recode")
-model_recode <- lm(Temp~ Ozone + Solar.R + Wind, data = data_recode)
+model_recode <- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width, data = data_recode)
 
 summary(model_recode)
 ```
@@ -151,7 +157,7 @@ summary(mice_data_2)
 So this is great, but then what do we do if we want to run a model? We have five data sets. One option is to pool the data this way:
 ```{r, eval = TRUE, results='asis'}
 #pooling
-model_mice <- with(mice_data,lm(Temp~ Ozone + Solar.R + Wind))
+model_mice <- with(mice_data,lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width))
 
 summary(pool(model_mice))
 
@@ -161,22 +167,17 @@ htmlreg(pool(model_mice))
 ```
 So mice is great. Let's also learn about Amelia II (my personal favorite, named after Amelia Earhart, because she is missing). Amelia is a little different because it assumes that your data is jointly distributed as multivariate normal. It uses the "expectation-maximization with bootstrapping" as an algorithm for imputation. The EM algorithm alternates between something called the expectation (E-step) and maximization (M-step) steps until it converges on values that were missing - it converges when the current and previous values are quite close (sounds a bit like Newton Raphson, no?). It brings in bootstraping by doing this process on multiple bootstrapped samples drawn from your original (and incomplete) data. 
 
-Great, let's try it out. Examine the function by calling `?amelia()` - look at the different arguments. Notice that amelia can handle time series data uniquely. Let's factor that in by creating a running time variable. 
+Great, let's try it out. Examine the function by calling `?amelia()` - look at the different arguments.
 
 ```{r, eval = TRUE, results='asis'}
 #Load in packages
 pacman::p_load(Amelia,
                lubridate)
 
-#create running time variable, lets just assume we're in 2023
-data_miss$time <- make_datetime(month = data_miss$Month,
-                                day = data_miss$Day,
-                                year = 2023)
-
-#impute
+#imputing (setting factor to nominal variable)
 amelia_data <- amelia(x = data_miss,
-                 m = 5,
-                 time = "time")
+                      noms="Species",
+                       m = 5)
 
 
 #let's run the model again, but this time using a for loop
@@ -184,7 +185,7 @@ models_amelia <- vector("list", 5)  #vector for our 5 newly imputed data sets
 
 
 for(i in 1:5){
-  models_amelia[[i]] <- lm(Temp ~ Ozone + Solar.R + Wind,
+  models_amelia[[i]] <- lm(Sepal.Length~ Sepal.Width+Petal.Length+Petal.Width,
                         data=amelia_data$imputations[[i]]) #why do we index like this?
 }
 
@@ -243,12 +244,6 @@ coefficient.names <-c("Intercept","Inflation","Trade","Civil Liberty","Populatio
   
 htmlreg(pool(models_africa),custom.coef.names = coefficient.names)
 
-
-#alternatively!
-all_coefs <- sapply(models_africa, coef) #get coefs
-all_ses <- sapply(models_africa, function(x) sqrt(diag(vcov(x)))) #get ses
-
-mi.meld(q = all_coefs, se = all_ses, byrow = F) 
 ```
 
 
